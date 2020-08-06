@@ -1,17 +1,120 @@
+use std::convert::TryFrom;
 use std::default::Default;
 use std::num::NonZeroU16;
 use std::time::Duration;
 
-use crate::types::{Level, Protocol};
+use crate::errors::ParamError;
+use crate::types::{Countries, Level, Protocol};
 
-// TODO: need to do validation on different params since some are mutually exclusive or bounded
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(getset::Getters, Clone, Debug, Default, PartialEq)]
+pub struct OptsBuilder {
+    // TODO: look into why this doesn't work on the struct itself
+    #[get = "pub with_prefix"]
+    api_key: Option<String>,
+    #[get = "pub with_prefix"]
+    level: Option<Level>,
+    #[get = "pub with_prefix"]
+    protocol: Option<Protocol>,
+    #[get = "pub with_prefix"]
+    countries: Option<Countries>,
+    #[get = "pub with_prefix"]
+    last_checked: Option<Duration>,
+    #[get = "pub with_prefix"]
+    port: Option<NonZeroU16>,
+    #[get = "pub with_prefix"]
+    time_to_connect: Option<Duration>,
+    #[get = "pub with_prefix"]
+    cookies: Option<bool>,
+    #[get = "pub with_prefix"]
+    connects_to_google: Option<bool>,
+    #[get = "pub with_prefix"]
+    https: Option<bool>,
+    #[get = "pub with_prefix"]
+    post: Option<bool>,
+    #[get = "pub with_prefix"]
+    referer: Option<bool>,
+    #[get = "pub with_prefix"]
+    forwards_user_agent: Option<bool>,
+}
+
+impl OptsBuilder {
+    pub fn api_key(mut self, api_key: &str) -> Self {
+        self.api_key = Some(api_key.to_string());
+        self
+    }
+
+    pub fn level(mut self, level: Level) -> Self {
+        self.level = Some(level);
+        self
+    }
+
+    pub fn protocol(mut self, protocol: Protocol) -> Self {
+        self.protocol = Some(protocol);
+        self
+    }
+
+    pub fn countries(mut self, countries: Countries) -> Self {
+        self.countries = Some(countries);
+        self
+    }
+
+    pub fn last_checked(mut self, last_checked: Duration) -> Self {
+        self.last_checked = Some(last_checked);
+        self
+    }
+
+    pub fn port(mut self, port: NonZeroU16) -> Self {
+        self.port = Some(port);
+        self
+    }
+
+    pub fn time_to_connect(mut self, time_to_connect: Duration) -> Self {
+        self.time_to_connect = Some(time_to_connect);
+        self
+    }
+
+    pub fn cookies(mut self, cookies: bool) -> Self {
+        self.cookies = Some(cookies);
+        self
+    }
+
+    pub fn connects_to_google(mut self, connects_to_google: bool) -> Self {
+        self.connects_to_google = Some(connects_to_google);
+        self
+    }
+
+    pub fn https(mut self, https: bool) -> Self {
+        self.https = Some(https);
+        self
+    }
+
+    pub fn post(mut self, post: bool) -> Self {
+        self.post = Some(post);
+        self
+    }
+
+    pub fn referer(mut self, referer: bool) -> Self {
+        self.referer = Some(referer);
+        self
+    }
+
+    pub fn forwards_user_agent(mut self, forwards_user_agent: bool) -> Self {
+        self.forwards_user_agent = Some(forwards_user_agent);
+        self
+    }
+
+    pub fn try_build(self) -> Result<Opts, ParamError> {
+        Opts::try_from(self)
+    }
+}
+
+// TODO: add in `format` and limit` here
+#[derive(Clone, Debug, PartialEq)]
 pub struct Opts {
     api_key: Option<String>,
     level: Option<Level>,
     protocol: Option<Protocol>,
-    countries: Vec<String>,
-    not_countries: Vec<String>,
+    countries: Option<Countries>,
     last_checked: Option<Duration>,
     port: Option<NonZeroU16>,
     time_to_connect: Option<Duration>,
@@ -21,149 +124,123 @@ pub struct Opts {
     post: Option<bool>,
     referer: Option<bool>,
     forwards_user_agent: Option<bool>,
+    limit: u8,
+    format: String,
 }
 
 impl Opts {
-    pub fn api_key(mut self, api_key: &str) -> Self {
-        self.api_key = Some(api_key.to_string());
-        self
+    pub fn builder() -> OptsBuilder {
+        OptsBuilder::default()
     }
 
-    pub fn get_api_key(&self) -> Option<&String> {
-        self.api_key.as_ref()
+    fn new(
+        api_key: Option<String>,
+        level: Option<Level>,
+        protocol: Option<Protocol>,
+        countries: Option<Countries>,
+        last_checked: Option<Duration>,
+        port: Option<NonZeroU16>,
+        time_to_connect: Option<Duration>,
+        cookies: Option<bool>,
+        connects_to_google: Option<bool>,
+        https: Option<bool>,
+        post: Option<bool>,
+        referer: Option<bool>,
+        forwards_user_agent: Option<bool>,
+    ) -> Self {
+        Opts {
+            api_key: api_key.clone(),
+            level,
+            protocol,
+            countries,
+            last_checked,
+            port,
+            time_to_connect,
+            cookies,
+            connects_to_google,
+            https,
+            post,
+            referer,
+            forwards_user_agent,
+            limit: match api_key {
+                Some(_) => 20,
+                None => 5,
+            },
+            format: String::from("json"),
+        }
     }
+}
 
-    pub fn level(mut self, level: Level) -> Self {
-        self.level = Some(level);
-        self
+impl Default for Opts {
+    fn default() -> Self {
+        Opts {
+            api_key: Option::default(),
+            level: Option::default(),
+            protocol: Option::default(),
+            countries: Option::default(),
+            last_checked: Option::default(),
+            port: Option::default(),
+            time_to_connect: Option::default(),
+            cookies: Option::default(),
+            connects_to_google: Option::default(),
+            https: Option::default(),
+            post: Option::default(),
+            referer: Option::default(),
+            forwards_user_agent: Option::default(),
+            limit: 5,
+            format: String::from("json"),
+        }
     }
+}
 
-    pub fn get_level(&self) -> Option<Level> {
-        self.level
-    }
+impl TryFrom<OptsBuilder> for Opts {
+    type Error = ParamError;
 
-    pub fn protocol(mut self, protocol: Protocol) -> Self {
-        self.protocol = Some(protocol);
-        self
-    }
+    fn try_from(builder: OptsBuilder) -> Result<Self, Self::Error> {
+        let bounds_check = |val: Option<Duration>,
+                            param_name: &str,
+                            bounds: (Duration, Duration)|
+         -> Result<(), Self::Error> {
+            match val {
+                // Check that duration is within bounds if it exists
+                Some(duration) if duration < bounds.0 || duration > bounds.1 => {
+                    Err(Self::Error::OutOfBounds {
+                        param: String::from(param_name),
+                        bounds,
+                        value: duration,
+                    })
+                }
+                _ => Ok(()),
+            }
+        };
 
-    pub fn get_protocol(&self) -> Option<Protocol> {
-        self.protocol
-    }
+        bounds_check(
+            builder.last_checked,
+            "last_checked",
+            (Duration::new(1 * 60, 0), Duration::new(60 * 60, 0)),
+        )?;
 
-    pub fn country(mut self, country: &str) -> Self {
-        self.countries.push(country.to_string());
-        self
-    }
+        bounds_check(
+            builder.time_to_connect,
+            "time_to_connect",
+            (Duration::new(1, 0), Duration::new(60, 0)),
+        )?;
 
-    pub fn countries<I>(mut self, countries: I) -> Self
-    where
-        I: Iterator<Item = String>,
-    {
-        self.countries = countries.collect();
-        self
-    }
-
-    pub fn get_countries(&self) -> &[String] {
-        self.countries.as_ref()
-    }
-
-    pub fn not_country(mut self, not_country: &str) -> Self {
-        self.not_countries.push(not_country.to_string());
-        self
-    }
-
-    pub fn not_countries<I>(mut self, not_countries: I) -> Self
-    where
-        I: Iterator<Item = String>,
-    {
-        self.not_countries = not_countries.collect();
-        self
-    }
-
-    pub fn get_not_countries(&self) -> &[String] {
-        self.not_countries.as_ref()
-    }
-
-    pub fn last_checked(mut self, last_checked: Duration) -> Self {
-        self.last_checked = Some(last_checked);
-        self
-    }
-
-    pub fn get_last_checked(&self) -> Option<Duration> {
-        self.last_checked
-    }
-
-    pub fn port(mut self, port: NonZeroU16) -> Self {
-        self.port = Some(port);
-        self
-    }
-
-    pub fn get_port(&self) -> Option<NonZeroU16> {
-        self.port
-    }
-
-    pub fn time_to_connect(mut self, time_to_connect: Duration) -> Self {
-        self.time_to_connect = Some(time_to_connect);
-        self
-    }
-
-    pub fn get_time_to_connect(&self) -> Option<Duration> {
-        self.time_to_connect
-    }
-
-    pub fn cookies(mut self, cookies: bool) -> Self {
-        self.cookies = Some(cookies);
-        self
-    }
-
-    pub fn get_cookies(&self) -> Option<bool> {
-        self.cookies
-    }
-
-    pub fn connects_to_google(mut self, connects_to_google: bool) -> Self {
-        self.connects_to_google = Some(connects_to_google);
-        self
-    }
-
-    pub fn get_connects_to_google(&self) -> Option<bool> {
-        self.connects_to_google
-    }
-
-    pub fn https(mut self, https: bool) -> Self {
-        self.https = Some(https);
-        self
-    }
-
-    pub fn get_https(&self) -> Option<bool> {
-        self.https
-    }
-
-    pub fn post(mut self, post: bool) -> Self {
-        self.post = Some(post);
-        self
-    }
-
-    pub fn get_post(&self) -> Option<bool> {
-        self.post
-    }
-
-    pub fn referer(mut self, referer: bool) -> Self {
-        self.referer = Some(referer);
-        self
-    }
-
-    pub fn get_referer(&self) -> Option<bool> {
-        self.referer
-    }
-
-    pub fn forwards_user_agent(mut self, forwards_user_agent: bool) -> Self {
-        self.forwards_user_agent = Some(forwards_user_agent);
-        self
-    }
-
-    pub fn get_forwards_user_agent(&self) -> Option<bool> {
-        self.forwards_user_agent
+        Ok(Opts::new(
+            builder.api_key,
+            builder.level,
+            builder.protocol,
+            builder.countries,
+            builder.last_checked,
+            builder.port,
+            builder.time_to_connect,
+            builder.cookies,
+            builder.connects_to_google,
+            builder.https,
+            builder.post,
+            builder.referer,
+            builder.forwards_user_agent,
+        ))
     }
 }
 
@@ -173,14 +250,36 @@ mod tests {
 
     #[test]
     fn test_opts_builder() {
-        let opts = Opts::default().country("US").country("CA");
-        assert_eq!(opts.get_countries(), &["US", "CA"]);
+        // Check the bounds
+        let bad_opts = Opts::builder()
+            .time_to_connect(Duration::new(0, 0))
+            .try_build();
+        assert!(bad_opts.is_err());
 
-        let opts = Opts::default()
+        let bad_opts = Opts::builder()
+            .time_to_connect(Duration::new(61, 0))
+            .try_build();
+        assert!(bad_opts.is_err());
+
+        let bad_opts = Opts::builder()
+            .last_checked(Duration::new(1000 * 60 + 1, 0))
+            .try_build();
+        assert!(bad_opts.is_err());
+
+        let bad_opts = Opts::builder()
+            .last_checked(Duration::new(0, 0))
+            .try_build();
+        assert!(bad_opts.is_err());
+
+        // Check full param listing
+        let opts = Opts::builder()
             .api_key("<key>")
             .level(Level::Elite)
             .protocol(Protocol::Socks4)
-            .not_countries(vec![String::from("ZH"), String::from("ES")].into_iter())
+            .countries(Countries::BlockList(vec![
+                String::from("ZH"),
+                String::from("ES"),
+            ]))
             .last_checked(Duration::new(60 * 10, 0))
             .port(NonZeroU16::new(8080).unwrap())
             .time_to_connect(Duration::new(10, 0))
@@ -189,7 +288,9 @@ mod tests {
             .https(true)
             .post(false)
             .referer(true)
-            .forwards_user_agent(false);
+            .forwards_user_agent(false)
+            .try_build()
+            .unwrap();
 
         assert_eq!(
             opts,
@@ -197,8 +298,10 @@ mod tests {
                 api_key: Some(String::from("<key>")),
                 level: Some(Level::Elite),
                 protocol: Some(Protocol::Socks4),
-                countries: Vec::default(),
-                not_countries: vec![String::from("ZH"), String::from("ES")],
+                countries: Some(Countries::BlockList(vec![
+                    String::from("ZH"),
+                    String::from("ES")
+                ])),
                 last_checked: Some(Duration::new(60 * 10, 0)),
                 port: Some(NonZeroU16::new(8080).unwrap()),
                 time_to_connect: Some(Duration::new(10, 0)),
@@ -208,6 +311,8 @@ mod tests {
                 post: Some(false),
                 referer: Some(true),
                 forwards_user_agent: Some(false),
+                limit: 20,
+                format: String::from("json")
             }
         );
     }

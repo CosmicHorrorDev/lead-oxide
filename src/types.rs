@@ -3,6 +3,12 @@ use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum Countries {
+    AllowList(Vec<String>),
+    BlockList(Vec<String>),
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     Anonymous,

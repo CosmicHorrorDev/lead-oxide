@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4"
+getset = "0.1"
+thiserror = "1.0"
