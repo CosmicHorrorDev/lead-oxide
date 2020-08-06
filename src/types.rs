@@ -54,14 +54,12 @@ pub struct Proxy {
     pub supports: Supports,
 }
 
-bitflags::bitflags! {
-    pub struct Supports: u8 {
-        const HTTPS = 1 << 0;
-        const GET = 1 << 1;
-        const POST = 1 << 2;
-        const COOKIES = 1 << 3;
-        const REFERER = 1 << 4;
-        const USER_AGENT = 1 << 5;
-        const GOOGLE = 1 << 6;
-    }
+pub struct Supports {
+    pub https: bool,
+    pub get: bool,
+    pub post: bool,
+    pub cookies: bool,
+    pub referer: bool,
+    pub user_agent: bool,
+    pub google: bool,
 }
