@@ -6,6 +6,8 @@ use std::time::Duration;
 use crate::errors::ParamError;
 use crate::types::{Countries, Level, Protocol};
 
+use serde::Serialize;
+
 #[derive(getset::Getters, Clone, Debug, Default, PartialEq)]
 pub struct OptsBuilder {
     // TODO: look into why this doesn't work on the struct itself
@@ -108,21 +110,27 @@ impl OptsBuilder {
     }
 }
 
-// TODO: add in `format` and limit` here
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct Opts {
+    #[serde(rename = "api")]
     api_key: Option<String>,
     level: Option<Level>,
+    #[serde(rename = "type")]
     protocol: Option<Protocol>,
+    #[serde(flatten)]
     countries: Option<Countries>,
-    last_checked: Option<Duration>,
+    #[serde(rename = "last_check")]
+    last_checked: Option<u64>,
     port: Option<NonZeroU16>,
-    time_to_connect: Option<Duration>,
+    #[serde(rename = "speed")]
+    time_to_connect: Option<u64>,
     cookies: Option<bool>,
+    #[serde(rename = "google")]
     connects_to_google: Option<bool>,
     https: Option<bool>,
     post: Option<bool>,
     referer: Option<bool>,
+    #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
     limit: u8,
     format: String,
@@ -153,9 +161,9 @@ impl Opts {
             level,
             protocol,
             countries,
-            last_checked,
+            last_checked: last_checked.map(|duration| duration.as_secs() / 60),
             port,
-            time_to_connect,
+            time_to_connect: time_to_connect.map(|duration| duration.as_secs()),
             cookies,
             connects_to_google,
             https,
@@ -302,9 +310,9 @@ mod tests {
                     String::from("ZH"),
                     String::from("ES")
                 ])),
-                last_checked: Some(Duration::new(60 * 10, 0)),
+                last_checked: Some(10),
                 port: Some(NonZeroU16::new(8080).unwrap()),
-                time_to_connect: Some(Duration::new(10, 0)),
+                time_to_connect: Some(10),
                 cookies: Some(true),
                 connects_to_google: Some(false),
                 https: Some(true),
