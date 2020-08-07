@@ -110,7 +110,32 @@ impl OptsBuilder {
     }
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+enum Limit {
+    Free = 5,
+    Premium = 20,
+}
+
+impl Default for Limit {
+    fn default() -> Self {
+        Self::Free
+    }
+}
+
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum Format {
+    // Techically txt is also allowed, but this library only uses json
+    Json,
+}
+
+impl Default for Format {
+    fn default() -> Self {
+        Self::Json
+    }
+}
+
+#[derive(Serialize, Clone, Debug, Default, PartialEq)]
 pub struct Opts {
     #[serde(rename = "api")]
     api_key: Option<String>,
@@ -132,8 +157,9 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
-    limit: u8,
-    format: String,
+    // TODO: test serialization with these now
+    limit: Limit,
+    format: Format,
 }
 
 impl Opts {
@@ -171,32 +197,10 @@ impl Opts {
             referer,
             forwards_user_agent,
             limit: match api_key {
-                Some(_) => 20,
-                None => 5,
+                Some(_) => Limit::Premium,
+                None => Limit::Free,
             },
-            format: String::from("json"),
-        }
-    }
-}
-
-impl Default for Opts {
-    fn default() -> Self {
-        Opts {
-            api_key: Option::default(),
-            level: Option::default(),
-            protocol: Option::default(),
-            countries: Option::default(),
-            last_checked: Option::default(),
-            port: Option::default(),
-            time_to_connect: Option::default(),
-            cookies: Option::default(),
-            connects_to_google: Option::default(),
-            https: Option::default(),
-            post: Option::default(),
-            referer: Option::default(),
-            forwards_user_agent: Option::default(),
-            limit: 5,
-            format: String::from("json"),
+            format: Format::Json,
         }
     }
 }
@@ -319,8 +323,8 @@ mod tests {
                 post: Some(false),
                 referer: Some(true),
                 forwards_user_agent: Some(false),
-                limit: 20,
-                format: String::from("json")
+                limit: Limit::Premium,
+                format: Format::Json
             }
         );
     }
