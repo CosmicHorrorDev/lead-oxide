@@ -1,18 +1,18 @@
 use std::net::IpAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use crate::opts::Opts;
 
 #[derive(Clone, Debug)]
 pub struct Fetcher {
-    last_fetched: Arc<Instant>,
+    last_fetched: Arc<Mutex<Instant>>,
     opts: Opts,
     proxies: Vec<IpAddr>,
 }
 
 impl Fetcher {
-    fn new(last_fetched: Arc<Instant>, opts: Opts) -> Self {
+    fn new(last_fetched: Arc<Mutex<Instant>>, opts: Opts) -> Self {
         Self {
             last_fetched,
             opts,
@@ -31,13 +31,13 @@ impl Fetcher {
 
 #[derive(Debug)]
 pub struct Session {
-    last_fetched: Arc<Instant>,
+    last_fetched: Arc<Mutex<Instant>>,
 }
 
 impl Session {
     pub fn new() -> Self {
         Session {
-            last_fetched: Arc::new(Instant::now()),
+            last_fetched: Arc::new(Mutex::new(Instant::now())),
         }
     }
 
