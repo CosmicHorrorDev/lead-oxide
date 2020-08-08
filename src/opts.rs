@@ -7,10 +7,10 @@ use crate::errors::ParamError;
 use crate::types::{Countries, Level, Protocol};
 
 use serde::Serialize;
+use serde_repr::Serialize_repr;
 
 #[derive(getset::Getters, Clone, Debug, Default, PartialEq)]
 pub struct OptsBuilder {
-    // TODO: look into why this doesn't work on the struct itself
     #[get = "pub with_prefix"]
     api_key: Option<String>,
     #[get = "pub with_prefix"]
@@ -110,7 +110,8 @@ impl OptsBuilder {
     }
 }
 
-#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Serialize_repr, Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 enum Limit {
     Free = 5,
     Premium = 20,
@@ -157,7 +158,6 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
-    // TODO: test serialization with these now
     limit: Limit,
     format: Format,
 }
