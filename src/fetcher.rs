@@ -14,6 +14,10 @@ pub struct Fetcher {
     proxies: Vec<Proxy>,
 }
 
+// Yes the API says 1 second delay, but I was still occasionally getting rate limited,
+// and 1.05 seconds was also causing problems, so 1.1 is the new delay.
+const DELAY: Duration = Duration::from_millis(1100);
+
 impl Fetcher {
     fn new(last_fetched: Arc<Mutex<Instant>>, opts: Opts) -> Self {
         Self {
@@ -23,12 +27,7 @@ impl Fetcher {
         }
     }
 
-    // TODO: double check names for proxy stuff and use those
     pub fn try_get(&mut self, amount: usize) -> Result<Vec<Proxy>, ApiError> {
-        // Yes the API says 1 second delay, but I was still occasionally getting rate limited,
-        // and 1.05 seconds was also causing problems, so 1.1 is the new delay.
-        const DELAY: Duration = Duration::from_millis(1100);
-
         if self.proxies.len() >= amount {
             // If there's enough in the current list then just go ahead and fulfill
             Ok(self.proxies.split_off(amount))
@@ -40,9 +39,15 @@ impl Fetcher {
             ));
             let mut request = ureq::get(constants::API_URI).query_str(&params).build();
 
-            // TODO: don't just blindly unwrap here later, need to check if it was poisioned and
-            //       then default to now?
-            let mut last_fetched = self.last_fetched.lock().unwrap();
+            let mut last_fetched = match self.last_fetched.lock() {
+                Ok(last_fetched) => last_fetched,
+                Err(err) => {
+                    // If the lock was poisoned then play it safe and reset the timer
+                    let mut poisioned_fetch = err.into_inner();
+                    *poisioned_fetch = Instant::now();
+                    poisioned_fetch
+                }
+            };
 
             while self.proxies.len() < amount {
                 // Delay to prevent rate limiting
@@ -91,9 +96,8 @@ pub struct Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            // FIXME: this doesn't make sense to start with now since it will block the first
-            //        request for 1 second unnecessarily
-            last_fetched: Arc::new(Mutex::new(Instant::now())),
+            // Start far enough back to avoid delay
+            last_fetched: Arc::new(Mutex::new(Instant::now() - DELAY)),
         }
     }
 
