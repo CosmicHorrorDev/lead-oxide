@@ -72,16 +72,28 @@ where
     NaiveDateTime::parse_from_str(&s, time_fmt).map_err(de::Error::custom)
 }
 
-// TODO: convert these back to bool
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct Supports {
-    pub https: u8,
-    pub get: u8,
-    pub post: u8,
-    pub cookies: u8,
-    pub referer: u8,
-    #[serde(rename = "user_agent")]
-    pub forwards_user_agent: u8,
-    #[serde(rename = "google")]
-    pub connects_to_google: u8,
+    #[serde(deserialize_with = "deserialize_bool")]
+    pub https: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    pub get: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    pub post: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    pub cookies: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    pub referer: bool,
+    #[serde(rename = "user_agent", deserialize_with = "deserialize_bool")]
+    pub forwards_user_agent: bool,
+    #[serde(rename = "google", deserialize_with = "deserialize_bool")]
+    pub connects_to_google: bool,
+}
+
+fn deserialize_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let byte: u8 = Deserialize::deserialize(deserializer)?;
+    Ok(byte == 1)
 }
