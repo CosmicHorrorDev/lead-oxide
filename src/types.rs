@@ -36,8 +36,10 @@ pub struct Response {
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Proxy {
+    // TODO: switch this to IpAddr?
     pub ip: Ipv4Addr,
     #[serde(deserialize_with = "deserialize_from_str")]
+    // TODO: switch to non-zero u16
     pub port: u16,
     pub country: String,
     #[serde(deserialize_with = "deserialize_date")]
@@ -47,6 +49,7 @@ pub struct Proxy {
     #[serde(rename = "type")]
     pub protocol: Protocol,
     #[serde(rename = "speed", deserialize_with = "deserialize_from_str")]
+    // TODO: switch to duration
     pub time_to_connect: u8,
     #[serde(rename = "support")]
     pub supports: Supports,
@@ -72,7 +75,7 @@ where
     NaiveDateTime::parse_from_str(&s, time_fmt).map_err(de::Error::custom)
 }
 
-#[derive(Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Deserialize, Clone, Copy, Debug, Default, PartialEq)]
 pub struct Supports {
     #[serde(deserialize_with = "deserialize_bool")]
     pub https: bool,
