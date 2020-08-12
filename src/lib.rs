@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 mod constants;
 pub mod errors;
 pub mod fetcher;
