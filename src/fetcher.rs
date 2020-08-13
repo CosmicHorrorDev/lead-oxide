@@ -135,68 +135,84 @@ mod tests {
     mod delays {
         use super::*;
 
+        fn time_it<F, T>(f: F, lower_millis: u128, upper_millis: u128) -> T
+        where
+            F: FnOnce() -> T,
+        {
+            let start = Instant::now();
+
+            let result = f();
+
+            let end = Instant::now();
+            let elapsed_millis = end.duration_since(start).as_millis();
+            assert!(elapsed_millis >= lower_millis && elapsed_millis <= upper_millis);
+
+            result
+        }
+
         #[test]
         fn single_fetcher() {
             // TODO: handle this better
             const LIMIT: usize = 5;
 
-            let start = Instant::now();
+            let mut fetcher = time_it(
+                || {
+                    let session = Session::new();
+                    let mut fetcher = session.spawn_fetcher(Opts::default());
 
-            let session = Session::new();
-            let mut fetcher = session.spawn_fetcher(Opts::default());
+                    // 5 proxies is returned with no API key so 6 will force 2 calls
+                    let _ = fetcher.try_get(LIMIT + 1);
 
-            // 5 proxies is returned with no API key so 6 will force 2 calls
-            let _ = fetcher.try_get(LIMIT + 1);
+                    fetcher
+                },
+                1000,
+                1200,
+            );
 
-            let end = Instant::now();
-            let elapsed_millis = end.duration_since(start).as_millis();
-            assert!(elapsed_millis > 1000);
-
-            // And now there should still be some spare proxies that we can get with no delay
-            let start = Instant::now();
-
-            let _ = fetcher.try_get(LIMIT - 1);
-
-            let end = Instant::now();
-            let elapsed_millis = end.duration_since(start).as_millis();
-            assert!(elapsed_millis < 100);
+            time_it(
+                || {
+                    let _ = fetcher.try_get(LIMIT - 1);
+                },
+                0,
+                100,
+            );
         }
 
         #[test]
         fn multiple_fetchers() {
-            let start = Instant::now();
+            time_it(
+                || {
+                    let session = Session::new();
+                    let mut fetcher1 = session.spawn_fetcher(Opts::default());
+                    let mut fetcher2 = session.spawn_fetcher(Opts::default());
 
-            let session = Session::new();
-            let mut fetcher1 = session.spawn_fetcher(Opts::default());
-            let mut fetcher2 = session.spawn_fetcher(Opts::default());
-
-            let _ = fetcher1.try_get(1);
-            let _ = fetcher2.try_get(1);
-
-            let end = Instant::now();
-            let elapsed_millis = end.duration_since(start).as_millis();
-            assert!(elapsed_millis > 1000);
+                    let _ = fetcher1.try_get(1);
+                    let _ = fetcher2.try_get(1);
+                },
+                1000,
+                12000,
+            );
         }
 
         #[test]
         fn mutliple_threads() {
-            let start = Instant::now();
+            time_it(
+                || {
+                    let session = Session::new();
+                    let mut fetcher1 = session.spawn_fetcher(Opts::default());
+                    let mut fetcher2 = session.spawn_fetcher(Opts::default());
 
-            let session = Session::new();
-            let mut fetcher1 = session.spawn_fetcher(Opts::default());
-            let mut fetcher2 = session.spawn_fetcher(Opts::default());
+                    thread::spawn(move || {
+                        let _ = fetcher1.try_get(1);
+                    })
+                    .join()
+                    .expect("Failed to spawn thread");
 
-            thread::spawn(move || {
-                let _ = fetcher1.try_get(1);
-            })
-            .join()
-            .expect("Failed to spawn thread");
-
-            let _ = fetcher2.try_get(1);
-
-            let end = Instant::now();
-            let elapsed_millis = end.duration_since(start).as_millis();
-            assert!(elapsed_millis > 1000);
+                    let _ = fetcher2.try_get(1);
+                },
+                1000,
+                12000,
+            );
         }
     }
 }
