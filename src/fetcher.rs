@@ -30,7 +30,7 @@ impl Fetcher {
     pub fn try_get(&mut self, amount: usize) -> Result<Vec<Proxy>, ApiError> {
         if self.proxies.len() >= amount {
             // If there's enough in the current list then just go ahead and fulfill without locking
-            Ok(self.proxies.split_off(amount))
+            Ok(self.proxies.split_off(self.proxies.len() - amount))
         } else {
             // Otherwise we need to lock and request the api
             let mut request = self.request_builder();
@@ -59,7 +59,7 @@ impl Fetcher {
                 *last_fetched = Instant::now();
             }
 
-            Ok(self.proxies.split_off(amount))
+            Ok(self.proxies.split_off(self.proxies.len() - amount))
         }
     }
 
@@ -132,6 +132,46 @@ impl Session {
 mod tests {
     use super::*;
 
+    mod functionality {
+        use super::*;
+
+        #[test]
+        fn api_key() {
+            // TODO: still hndle this better?
+            const PREMIUM_LIMIT: usize = 20;
+
+            let session = Session::new();
+
+            let mut fetcher =
+                session.spawn_fetcher(Opts::builder().api_key("<key>").try_build().unwrap());
+
+            let single = fetcher.try_get(1).unwrap();
+            let the_rest = fetcher.drain();
+
+            // Total returned from one fetch using an api key should be 20
+            assert_eq!(PREMIUM_LIMIT, single.len() + the_rest.len());
+        }
+
+        #[test]
+        fn methods() {
+            // TODO: handle this better?
+            const LIMIT: usize = 5;
+
+            let session = Session::new();
+
+            let mut fetcher = session.spawn_fetcher(Opts::default());
+
+            let single = fetcher.try_get(1).unwrap();
+            assert_eq!(single.len(), 1);
+
+            let triple = fetcher.try_get(3).unwrap();
+            assert_eq!(triple.len(), 3);
+
+            let the_rest = fetcher.drain();
+            assert_eq!(the_rest.len(), LIMIT - single.len() - triple.len());
+        }
+    }
+
     mod delays {
         use super::*;
 
@@ -169,6 +209,7 @@ mod tests {
                 1200,
             );
 
+            // Since there are still proxies in the internal list there should be no delay here
             time_it(
                 || {
                     let _ = fetcher.try_get(LIMIT - 1);
