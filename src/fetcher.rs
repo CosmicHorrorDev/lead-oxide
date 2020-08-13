@@ -132,14 +132,15 @@ impl Session {
 mod tests {
     use super::*;
 
+    // XXX: need to handle clearing the env var key once that's added in
+    const FREE_LIMIT: usize = 5;
+    const PREMIUM_LIMIT: usize = 20;
+
     mod functionality {
         use super::*;
 
         #[test]
         fn api_key() {
-            // TODO: still hndle this better?
-            const PREMIUM_LIMIT: usize = 20;
-
             let session = Session::new();
 
             let mut fetcher =
@@ -154,9 +155,6 @@ mod tests {
 
         #[test]
         fn methods() {
-            // TODO: handle this better?
-            const LIMIT: usize = 5;
-
             let session = Session::new();
 
             let mut fetcher = session.spawn_fetcher(Opts::default());
@@ -168,7 +166,7 @@ mod tests {
             assert_eq!(triple.len(), 3);
 
             let the_rest = fetcher.drain();
-            assert_eq!(the_rest.len(), LIMIT - single.len() - triple.len());
+            assert_eq!(the_rest.len(), FREE_LIMIT - single.len() - triple.len());
         }
     }
 
@@ -192,16 +190,13 @@ mod tests {
 
         #[test]
         fn single_fetcher() {
-            // TODO: handle this better
-            const LIMIT: usize = 5;
-
             let mut fetcher = time_it(
                 || {
                     let session = Session::new();
                     let mut fetcher = session.spawn_fetcher(Opts::default());
 
                     // 5 proxies is returned with no API key so 6 will force 2 calls
-                    let _ = fetcher.try_get(LIMIT + 1);
+                    let _ = fetcher.try_get(FREE_LIMIT + 1);
 
                     fetcher
                 },
@@ -212,7 +207,7 @@ mod tests {
             // Since there are still proxies in the internal list there should be no delay here
             time_it(
                 || {
-                    let _ = fetcher.try_get(LIMIT - 1);
+                    let _ = fetcher.try_get(FREE_LIMIT - 1);
                 },
                 0,
                 100,
