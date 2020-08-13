@@ -112,7 +112,7 @@ impl OptsBuilder {
 
 #[derive(Serialize_repr, Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
-enum Limit {
+pub enum Limit {
     Free = 5,
     Premium = 20,
 }
@@ -125,7 +125,7 @@ impl Default for Limit {
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-enum Format {
+pub enum Format {
     // Techically txt is also allowed, but this library only uses json
     Json,
 }
@@ -136,7 +136,8 @@ impl Default for Format {
     }
 }
 
-#[derive(Serialize, Clone, Debug, Default, PartialEq)]
+#[derive(getset::Getters, Serialize, Clone, Debug, Default, PartialEq)]
+#[get = "pub with_prefix"]
 pub struct Opts {
     #[serde(rename = "api")]
     api_key: Option<String>,

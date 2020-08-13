@@ -91,7 +91,7 @@ impl Fetcher {
 
     #[cfg(test)]
     fn fetch(&self, _request: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
-        Ok(vec![Proxy {
+        Ok(std::iter::repeat(Proxy {
             ip: std::net::Ipv4Addr::new(1, 2, 3, 4),
             port: 4321,
             country: String::from("CA"),
@@ -100,7 +100,9 @@ impl Fetcher {
             protocol: crate::types::Protocol::Http,
             time_to_connect: 21,
             supports: crate::types::Supports::default(),
-        }])
+        })
+        .take(*self.opts.limit() as usize)
+        .collect())
     }
 
     pub fn drain(self) -> Vec<Proxy> {
@@ -135,17 +137,29 @@ mod tests {
 
         #[test]
         fn single_fetcher() {
+            // TODO: handle this better
+            const LIMIT: usize = 5;
+
             let start = Instant::now();
 
             let session = Session::new();
             let mut fetcher = session.spawn_fetcher(Opts::default());
 
-            // Only 1 proxy is returned per call when testing so this should delay
-            let _ = fetcher.try_get(2);
+            // 5 proxies is returned with no API key so 6 will force 2 calls
+            let _ = fetcher.try_get(LIMIT + 1);
 
             let end = Instant::now();
             let elapsed_millis = end.duration_since(start).as_millis();
             assert!(elapsed_millis > 1000);
+
+            // And now there should still be some spare proxies that we can get with no delay
+            let start = Instant::now();
+
+            let _ = fetcher.try_get(LIMIT - 1);
+
+            let end = Instant::now();
+            let elapsed_millis = end.duration_since(start).as_millis();
+            assert!(elapsed_millis < 100);
         }
 
         #[test]
