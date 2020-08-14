@@ -90,7 +90,7 @@ impl Fetcher {
     }
 
     #[cfg(test)]
-    fn fetch(&self, _request: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
+    fn fetch(&self, _not_needed: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
         Ok(std::iter::repeat(Proxy {
             ip: std::net::Ipv4Addr::new(1, 2, 3, 4),
             port: 4321,

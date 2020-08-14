@@ -9,6 +9,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
     #[serde(rename = "countries")]
+    // TODO: convert this to a str
     AllowList(Vec<String>),
     #[serde(rename = "not_countries")]
     BlockList(Vec<String>),

@@ -329,4 +329,69 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn url_serialization() -> Result<(), serde_url_params::error::Error> {
+        let split_and_sort = |s: String| -> Vec<String> {
+            let mut pieces: Vec<String> = s.split('&').map(String::from).collect();
+            pieces.sort();
+            pieces
+        };
+
+        let check_equal_params =
+            |opts: Opts, expected_url: &str| -> Result<(), serde_url_params::error::Error> {
+                let url = serde_url_params::to_string(&opts)?;
+                let params = split_and_sort(url);
+                assert_eq!(params, split_and_sort(expected_url.to_string()));
+
+                Ok(())
+            };
+
+        // Now to test a variety of Opts
+        check_equal_params(Opts::default(), "format=json&limit=5")?;
+        check_equal_params(
+            Opts::builder().api_key("<key>").try_build().unwrap(),
+            "api=%3Ckey%3E&format=json&limit=20",
+        )?;
+        check_equal_params(
+            Opts::builder()
+                .api_key("<key>")
+                .level(Level::Elite)
+                .protocol(Protocol::Socks4)
+                .countries(Countries::BlockList(vec![
+                    String::from("ZH"),
+                    String::from("ES"),
+                ]))
+                .last_checked(Duration::new(60 * 10, 0))
+                .port(NonZeroU16::new(8080).unwrap())
+                .time_to_connect(Duration::new(10, 0))
+                .cookies(true)
+                .connects_to_google(false)
+                .https(true)
+                .post(false)
+                .referer(true)
+                .forwards_user_agent(false)
+                .try_build()
+                .unwrap(),
+            &vec![
+                "api=%3Ckey%3E",
+                "cookies=true",
+                "format=json",
+                "google=false",
+                "https=true",
+                "last_check=10",
+                "level=elite",
+                "limit=20",
+                "not_countries=ES",
+                "not_countries=ZH",
+                "port=8080",
+                "post=false",
+                "referer=true",
+                "speed=10",
+                "type=socks4",
+                "user_agent=false",
+            ]
+            .join("&"),
+        )
+    }
 }
