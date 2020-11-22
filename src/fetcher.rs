@@ -59,7 +59,7 @@ impl Fetcher {
     }
 
     fn request_builder(&self) -> ureq::Request {
-        let params = serde_url_params::to_string(&self.opts).expect(&format!(
+        let params = serde_urlencoded::to_string(&self.opts).expect(&format!(
             "Failed to serialize url, please raise an issue to address this: {}",
             constants::REPO_URI
         ));

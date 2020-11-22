@@ -7,30 +7,32 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
     #[serde(rename = "countries")]
-    AllowList(Vec<String>),
+    AllowList(String),
     #[serde(rename = "not_countries")]
-    BlockList(Vec<String>),
+    BlockList(String),
 }
 
 impl Countries {
     pub fn allow() -> Self {
-        Self::AllowList(Vec::new())
+        Self::AllowList(String::new())
     }
 
     pub fn block() -> Self {
-        Self::BlockList(Vec::new())
+        Self::BlockList(String::new())
     }
 
     pub fn country(self, country: &str) -> Self {
+        let smart_join = |list: String, new| {
+            if list.is_empty() {
+                String::from(new)
+            } else {
+                format!("{},{}", list, new)
+            }
+        };
+
         match self {
-            Self::AllowList(mut vec) => {
-                vec.push(String::from(country));
-                Self::AllowList(vec)
-            }
-            Self::BlockList(mut vec) => {
-                vec.push(String::from(country));
-                Self::BlockList(vec)
-            }
+            Self::AllowList(list) => Self::AllowList(smart_join(list, country)),
+            Self::BlockList(list) => Self::BlockList(smart_join(list, country)),
         }
     }
 }

@@ -202,7 +202,7 @@ impl Opts {
                 Some(_) => Limit::Premium,
                 None => Limit::Free,
             },
-            format: Format::Json,
+            format: Format::default(),
         }
     }
 }
@@ -229,13 +229,13 @@ impl TryFrom<OptsBuilder> for Opts {
         bounds_check(
             builder.last_checked,
             "last_checked",
-            (Duration::new(1 * 60, 0), Duration::new(60 * 60, 0)),
+            (Duration::from_secs(1 * 60), Duration::from_secs(60 * 60)),
         )?;
 
         bounds_check(
             builder.time_to_connect,
             "time_to_connect",
-            (Duration::new(1, 0), Duration::new(60, 0)),
+            (Duration::from_secs(1), Duration::from_secs(60)),
         )?;
 
         Ok(Opts::new(
@@ -264,22 +264,22 @@ mod tests {
     fn test_opts_builder() {
         // Check the bounds
         let bad_opts = Opts::builder()
-            .time_to_connect(Duration::new(0, 0))
+            .time_to_connect(Duration::from_secs(0))
             .try_build();
         assert!(bad_opts.is_err());
 
         let bad_opts = Opts::builder()
-            .time_to_connect(Duration::new(61, 0))
+            .time_to_connect(Duration::from_secs(61))
             .try_build();
         assert!(bad_opts.is_err());
 
         let bad_opts = Opts::builder()
-            .last_checked(Duration::new(1000 * 60 + 1, 0))
+            .last_checked(Duration::from_secs(1000 * 60 + 1))
             .try_build();
         assert!(bad_opts.is_err());
 
         let bad_opts = Opts::builder()
-            .last_checked(Duration::new(0, 0))
+            .last_checked(Duration::from_secs(0))
             .try_build();
         assert!(bad_opts.is_err());
 
@@ -308,10 +308,7 @@ mod tests {
                 api_key: Some(String::from("<key>")),
                 level: Some(Level::Elite),
                 protocol: Some(Protocol::Socks4),
-                countries: Some(Countries::BlockList(vec![
-                    String::from("ZH"),
-                    String::from("ES")
-                ])),
+                countries: Some(Countries::BlockList(String::from("ZH,ES"))),
                 last_checked: Some(10),
                 port: Some(NonZeroU16::new(8080).unwrap()),
                 time_to_connect: Some(10),
@@ -328,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn url_serialization() -> Result<(), serde_url_params::error::Error> {
+    fn url_serialization() -> Result<(), serde_urlencoded::ser::Error> {
         let split_and_sort = |s: String| {
             let mut pieces: Vec<_> = s.split('&').map(String::from).collect();
             pieces.sort();
@@ -337,7 +334,7 @@ mod tests {
 
         let check_equal_params = |opts, expected: &[&str]| {
             // Convert `opts` to a url and sort the values
-            let url = serde_url_params::to_string(&opts)?;
+            let url = serde_urlencoded::to_string(&opts)?;
             let params = split_and_sort(url);
 
             // Sort the `expected` values
@@ -361,8 +358,8 @@ mod tests {
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
                 .countries(Countries::block().country("ZH").country("ES"))
-                .last_checked(Duration::new(60 * 10, 0))
-                .time_to_connect(Duration::new(10, 0))
+                .last_checked(Duration::from_secs(60 * 10))
+                .time_to_connect(Duration::from_secs(10))
                 .port(NonZeroU16::new(8080).unwrap())
                 .cookies(true)
                 .connects_to_google(false)
@@ -381,10 +378,7 @@ mod tests {
                 // Enums
                 "level=elite",
                 "type=socks4",
-                // FIXME: This should be for the same value separated with commas, the api will only
-                //        take the last value in this format
-                "not_countries=ES",
-                "not_countries=ZH",
+                "not_countries=ZH%2CES",
                 // Durations
                 "last_check=10",
                 "speed=10",
