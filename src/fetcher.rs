@@ -98,7 +98,7 @@ impl Fetcher {
             time_to_connect: 21,
             supports: crate::types::Supports::default(),
         })
-        .take(*self.opts.limit() as usize)
+        .take(self.opts.limit as usize)
         .collect())
     }
 

@@ -8,35 +8,20 @@ use crate::{
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
-// TODO: global "pub with_prefix" annotation is waiting on next `getset` release
-// TODO: do other builders typically provide getters? Is there a use case?
-#[derive(getset::Getters, Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct OptsBuilder {
-    #[get = "pub with_prefix"]
     api_key: Option<String>,
-    #[get = "pub with_prefix"]
     level: Option<Level>,
-    #[get = "pub with_prefix"]
     protocol: Option<Protocol>,
-    #[get = "pub with_prefix"]
     countries: Option<Countries>,
-    #[get = "pub with_prefix"]
     last_checked: Option<Duration>,
-    #[get = "pub with_prefix"]
     port: Option<NonZeroU16>,
-    #[get = "pub with_prefix"]
     time_to_connect: Option<Duration>,
-    #[get = "pub with_prefix"]
     cookies: Option<bool>,
-    #[get = "pub with_prefix"]
     connects_to_google: Option<bool>,
-    #[get = "pub with_prefix"]
     https: Option<bool>,
-    #[get = "pub with_prefix"]
     post: Option<bool>,
-    #[get = "pub with_prefix"]
     referer: Option<bool>,
-    #[get = "pub with_prefix"]
     forwards_user_agent: Option<bool>,
 }
 
@@ -137,8 +122,7 @@ impl Default for Format {
     }
 }
 
-#[derive(getset::Getters, Serialize, Clone, Debug, Default, PartialEq)]
-#[get = "pub with_prefix"]
+#[derive(Serialize, Clone, Debug, Default, PartialEq)]
 pub struct Opts {
     #[serde(rename = "api")]
     api_key: Option<String>,
@@ -160,6 +144,10 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
+    // Limit is only publicly used to get the proxy number during testing
+    #[cfg(test)]
+    pub limit: Limit,
+    #[cfg(not(test))]
     limit: Limit,
     format: Format,
 }
