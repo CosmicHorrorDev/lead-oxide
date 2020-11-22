@@ -1,14 +1,15 @@
-use std::convert::TryFrom;
-use std::default::Default;
-use std::num::NonZeroU16;
-use std::time::Duration;
+use std::{convert::TryFrom, num::NonZeroU16, time::Duration};
 
-use crate::errors::ParamError;
-use crate::types::{Countries, Level, Protocol};
+use crate::{
+    errors::ParamError,
+    types::{Countries, Level, Protocol},
+};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
+// TODO: global "pub with_prefix" annotation is waiting on next `getset` release
+// TODO: do other builders typically provide getters? Is there a use case?
 #[derive(getset::Getters, Clone, Debug, Default, PartialEq)]
 pub struct OptsBuilder {
     #[get = "pub with_prefix"]
@@ -183,7 +184,7 @@ impl Opts {
         referer: Option<bool>,
         forwards_user_agent: Option<bool>,
     ) -> Self {
-        Opts {
+        Self {
             api_key: api_key.clone(),
             level,
             protocol,
@@ -210,10 +211,8 @@ impl TryFrom<OptsBuilder> for Opts {
     type Error = ParamError;
 
     fn try_from(builder: OptsBuilder) -> Result<Self, Self::Error> {
-        let bounds_check = |val: Option<Duration>,
-                            param_name: &str,
-                            bounds: (Duration, Duration)|
-         -> Result<(), Self::Error> {
+        // TODO: can the newtype pattern be used here to make the bounds checking nicer?
+        let bounds_check = |val, param_name, bounds: (Duration, Duration)| {
             match val {
                 // Check that duration is within bounds if it exists
                 Some(duration) if duration < bounds.0 || duration > bounds.1 => {
@@ -284,15 +283,13 @@ mod tests {
             .try_build();
         assert!(bad_opts.is_err());
 
+        // TODO: this is done twice, is there a standard way of de-deuplicating a value like this?
         // Check full param listing
         let opts = Opts::builder()
             .api_key("<key>")
             .level(Level::Elite)
             .protocol(Protocol::Socks4)
-            .countries(Countries::BlockList(vec![
-                String::from("ZH"),
-                String::from("ES"),
-            ]))
+            .countries(Countries::block().country("ZH").country("ES"))
             .last_checked(Duration::new(60 * 10, 0))
             .port(NonZeroU16::new(8080).unwrap())
             .time_to_connect(Duration::new(10, 0))
@@ -332,39 +329,41 @@ mod tests {
 
     #[test]
     fn url_serialization() -> Result<(), serde_url_params::error::Error> {
-        let split_and_sort = |s: String| -> Vec<String> {
-            let mut pieces: Vec<String> = s.split('&').map(String::from).collect();
+        let split_and_sort = |s: String| {
+            let mut pieces: Vec<_> = s.split('&').map(String::from).collect();
             pieces.sort();
             pieces
         };
 
-        let check_equal_params =
-            |opts: Opts, expected_url: &str| -> Result<(), serde_url_params::error::Error> {
-                let url = serde_url_params::to_string(&opts)?;
-                let params = split_and_sort(url);
-                assert_eq!(params, split_and_sort(expected_url.to_string()));
+        let check_equal_params = |opts, expected: &[&str]| {
+            // Convert `opts` to a url and sort the values
+            let url = serde_url_params::to_string(&opts)?;
+            let params = split_and_sort(url);
 
-                Ok(())
-            };
+            // Sort the `expected` values
+            let mut expected = expected.to_vec();
+            expected.sort();
+
+            assert_eq!(params, expected);
+
+            Ok(())
+        };
 
         // Now to test a variety of Opts
-        check_equal_params(Opts::default(), "format=json&limit=5")?;
+        check_equal_params(Opts::default(), &["format=json", "limit=5"])?;
         check_equal_params(
             Opts::builder().api_key("<key>").try_build().unwrap(),
-            "api=%3Ckey%3E&format=json&limit=20",
+            &["api=%3Ckey%3E", "format=json", "limit=20"],
         )?;
         check_equal_params(
             Opts::builder()
                 .api_key("<key>")
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
-                .countries(Countries::BlockList(vec![
-                    String::from("ZH"),
-                    String::from("ES"),
-                ]))
+                .countries(Countries::block().country("ZH").country("ES"))
                 .last_checked(Duration::new(60 * 10, 0))
-                .port(NonZeroU16::new(8080).unwrap())
                 .time_to_connect(Duration::new(10, 0))
+                .port(NonZeroU16::new(8080).unwrap())
                 .cookies(true)
                 .connects_to_google(false)
                 .https(true)
@@ -373,25 +372,32 @@ mod tests {
                 .forwards_user_agent(false)
                 .try_build()
                 .unwrap(),
-            &vec![
-                "api=%3Ckey%3E",
-                "cookies=true",
-                "format=json",
-                "google=false",
-                "https=true",
-                "last_check=10",
-                "level=elite",
+            &[
+                // Automatic
                 "limit=20",
+                "format=json",
+                // Key
+                "api=%3Ckey%3E",
+                // Enums
+                "level=elite",
+                "type=socks4",
+                // FIXME: This should be for the same value separated with commas, the api will only
+                //        take the last value in this format
                 "not_countries=ES",
                 "not_countries=ZH",
+                // Durations
+                "last_check=10",
+                "speed=10",
+                // NonZero
                 "port=8080",
+                // Bools
+                "cookies=true",
+                "google=false",
+                "https=true",
                 "post=false",
                 "referer=true",
-                "speed=10",
-                "type=socks4",
                 "user_agent=false",
-            ]
-            .join("&"),
+            ],
         )
     }
 }

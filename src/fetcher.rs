@@ -1,11 +1,10 @@
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+    time::Instant,
+};
 
-use crate::constants;
-use crate::errors::ApiError;
-use crate::opts::Opts;
-use crate::types::Proxy;
+use crate::{constants, errors::ApiError, opts::Opts, types::Proxy};
 
 #[derive(Clone, Debug)]
 pub struct Fetcher {
@@ -13,10 +12,6 @@ pub struct Fetcher {
     opts: Opts,
     proxies: Vec<Proxy>,
 }
-
-// Yes the API says 1 second delay, but I was still occasionally getting rate limited,
-// and 1.05 seconds was also causing problems, so 1.1 is the new delay.
-const DELAY: Duration = Duration::from_millis(1100);
 
 impl Fetcher {
     fn new(last_fetched: Arc<Mutex<Instant>>, opts: Opts) -> Self {
@@ -48,8 +43,8 @@ impl Fetcher {
             while self.proxies.len() < amount {
                 // Delay to prevent rate limiting
                 let delta = Instant::now().duration_since(*last_fetched);
-                if delta < DELAY {
-                    thread::sleep(DELAY - delta);
+                if delta < constants::DELAY {
+                    thread::sleep(constants::DELAY - delta);
                 }
 
                 let mut proxies = self.fetch(&mut request)?;
@@ -89,6 +84,8 @@ impl Fetcher {
         }
     }
 
+    // TODO: is there a better way to mock the api response? It would be nice to test that errors
+    //       get interpreted right too
     #[cfg(test)]
     fn fetch(&self, _not_needed: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
         Ok(std::iter::repeat(Proxy {
@@ -117,9 +114,9 @@ pub struct Session {
 
 impl Session {
     pub fn new() -> Self {
-        Session {
+        Self {
             // Start far enough back to avoid delay
-            last_fetched: Arc::new(Mutex::new(Instant::now() - DELAY)),
+            last_fetched: Arc::new(Mutex::new(Instant::now() - constants::DELAY)),
         }
     }
 
@@ -173,7 +170,12 @@ mod tests {
     mod delays {
         use super::*;
 
-        fn time_it<F, T>(f: F, lower_millis: u128, upper_millis: u128) -> T
+        use std::time::Duration;
+
+        const TEN_MILLISEC: Duration = Duration::from_millis(10);
+
+        // Helper function for ensuring runtime of a `FnOnce`
+        fn time_it<F, T>(f: F, (expected, delta): (Duration, Duration)) -> T
         where
             F: FnOnce() -> T,
         {
@@ -182,8 +184,8 @@ mod tests {
             let result = f();
 
             let end = Instant::now();
-            let elapsed_millis = end.duration_since(start).as_millis();
-            assert!(elapsed_millis >= lower_millis && elapsed_millis <= upper_millis);
+            let elapsed = end.duration_since(start);
+            assert!(elapsed >= (expected - delta) && elapsed <= (expected + delta));
 
             result
         }
@@ -200,8 +202,8 @@ mod tests {
 
                     fetcher
                 },
-                1000,
-                1200,
+                // delay +/- 10ms
+                (constants::DELAY, TEN_MILLISEC),
             );
 
             // Since there are still proxies in the internal list there should be no delay here
@@ -209,13 +211,14 @@ mod tests {
                 || {
                     let _ = fetcher.try_get(FREE_LIMIT - 1);
                 },
-                0,
-                100,
+                // 10ms +/- 10ms
+                (TEN_MILLISEC, TEN_MILLISEC),
             );
         }
 
         #[test]
         fn multiple_fetchers() {
+            // Multiple fetchers should still have the delays coordinated
             time_it(
                 || {
                     let session = Session::new();
@@ -225,29 +228,32 @@ mod tests {
                     let _ = fetcher1.try_get(1);
                     let _ = fetcher2.try_get(1);
                 },
-                1000,
-                12000,
+                // delay +/- 10ms
+                (constants::DELAY, TEN_MILLISEC),
             );
         }
 
         #[test]
         fn mutliple_threads() {
+            // Multiple fetchers should still have the delays coordinated across threads
             time_it(
                 || {
                     let session = Session::new();
                     let mut fetcher1 = session.spawn_fetcher(Opts::default());
                     let mut fetcher2 = session.spawn_fetcher(Opts::default());
 
-                    thread::spawn(move || {
+                    let handle1 = thread::spawn(move || {
                         let _ = fetcher1.try_get(1);
-                    })
-                    .join()
-                    .expect("Failed to spawn thread");
+                    });
+                    let handle2 = thread::spawn(move || {
+                        let _ = fetcher2.try_get(1);
+                    });
 
-                    let _ = fetcher2.try_get(1);
+                    handle1.join().expect("Failed to join thread");
+                    handle2.join().expect("Failed to join thread");
                 },
-                1000,
-                12000,
+                // delay +/- 10ms
+                (constants::DELAY, TEN_MILLISEC),
             );
         }
     }

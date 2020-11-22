@@ -1,6 +1,4 @@
-use std::fmt::Display;
-use std::net::Ipv4Addr;
-use std::str::FromStr;
+use std::{fmt::Display, net::Ipv4Addr, str::FromStr};
 
 use chrono::naive::NaiveDateTime;
 
@@ -9,10 +7,32 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
     #[serde(rename = "countries")]
-    // TODO: convert this to a str
     AllowList(Vec<String>),
     #[serde(rename = "not_countries")]
     BlockList(Vec<String>),
+}
+
+impl Countries {
+    pub fn allow() -> Self {
+        Self::AllowList(Vec::new())
+    }
+
+    pub fn block() -> Self {
+        Self::BlockList(Vec::new())
+    }
+
+    pub fn country(self, country: &str) -> Self {
+        match self {
+            Self::AllowList(mut vec) => {
+                vec.push(String::from(country));
+                Self::AllowList(vec)
+            }
+            Self::BlockList(mut vec) => {
+                vec.push(String::from(country));
+                Self::BlockList(vec)
+            }
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,7 +57,7 @@ pub struct Response {
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Proxy {
-    // TODO: switch this to IpAddr?
+    // TODO: Combine this and the port number for a socketaddr? How to handle this
     pub ip: Ipv4Addr,
     #[serde(deserialize_with = "deserialize_from_str")]
     // TODO: switch to non-zero u16
@@ -78,6 +98,7 @@ where
 
 #[derive(Deserialize, Clone, Copy, Debug, Default, PartialEq)]
 pub struct Supports {
+    // TODO: is there a better way to handle this deserialization?
     #[serde(deserialize_with = "deserialize_bool")]
     pub https: bool,
     #[serde(deserialize_with = "deserialize_bool")]
