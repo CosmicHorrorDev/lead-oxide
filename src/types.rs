@@ -13,14 +13,17 @@ pub enum Countries {
 }
 
 impl Countries {
+    #[must_use]
     pub fn allow() -> Self {
         Self::AllowList(String::new())
     }
 
+    #[must_use]
     pub fn block() -> Self {
         Self::BlockList(String::new())
     }
 
+    #[must_use]
     pub fn country(self, country: &str) -> Self {
         let smart_join = |list: String, new| {
             if list.is_empty() {
