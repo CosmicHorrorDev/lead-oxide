@@ -104,7 +104,6 @@ impl OptsBuilder {
         self
     }
 
-    #[must_use]
     pub fn try_build(self) -> Result<Opts, ParamError> {
         Opts::try_from(self)
     }
@@ -158,7 +157,7 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
-    // TODO: can this be handled nicer?
+    // TODO: can this be handled nicer? Maybe just hide it from the docs if that's possible
     // Limit is only publicly used to get the proxy number during testing
     #[cfg(test)]
     pub limit: Limit,
@@ -171,44 +170,6 @@ impl Opts {
     #[must_use]
     pub fn builder() -> OptsBuilder {
         OptsBuilder::default()
-    }
-
-    #[must_use]
-    fn new(
-        api_key: Option<String>,
-        level: Option<Level>,
-        protocol: Option<Protocol>,
-        countries: Option<Countries>,
-        last_checked: Option<Duration>,
-        port: Option<NonZeroU16>,
-        time_to_connect: Option<Duration>,
-        cookies: Option<bool>,
-        connects_to_google: Option<bool>,
-        https: Option<bool>,
-        post: Option<bool>,
-        referer: Option<bool>,
-        forwards_user_agent: Option<bool>,
-    ) -> Self {
-        Self {
-            api_key: api_key.clone(),
-            level,
-            protocol,
-            countries,
-            last_checked: last_checked.map(|duration| duration.as_secs() / 60),
-            port,
-            time_to_connect: time_to_connect.map(|duration| duration.as_secs()),
-            cookies,
-            connects_to_google,
-            https,
-            post,
-            referer,
-            forwards_user_agent,
-            limit: match api_key {
-                Some(_) => Limit::Premium,
-                None => Limit::Free,
-            },
-            format: Format::default(),
-        }
     }
 }
 
@@ -234,7 +195,7 @@ impl TryFrom<OptsBuilder> for Opts {
         bounds_check(
             builder.last_checked,
             "last_checked",
-            (Duration::from_secs(1 * 60), Duration::from_secs(60 * 60)),
+            (Duration::from_secs(60), Duration::from_secs(60 * 60)),
         )?;
 
         bounds_check(
@@ -243,21 +204,26 @@ impl TryFrom<OptsBuilder> for Opts {
             (Duration::from_secs(1), Duration::from_secs(60)),
         )?;
 
-        Ok(Self::new(
-            builder.api_key,
-            builder.level,
-            builder.protocol,
-            builder.countries,
-            builder.last_checked,
-            builder.port,
-            builder.time_to_connect,
-            builder.cookies,
-            builder.connects_to_google,
-            builder.https,
-            builder.post,
-            builder.referer,
-            builder.forwards_user_agent,
-        ))
+        Ok(Self {
+            api_key: builder.api_key.clone(),
+            level: builder.level,
+            protocol: builder.protocol,
+            countries: builder.countries,
+            last_checked: builder.last_checked.map(|duration| duration.as_secs() / 60),
+            port: builder.port,
+            time_to_connect: builder.time_to_connect.map(|duration| duration.as_secs()),
+            cookies: builder.cookies,
+            connects_to_google: builder.connects_to_google,
+            https: builder.https,
+            post: builder.post,
+            referer: builder.referer,
+            forwards_user_agent: builder.forwards_user_agent,
+            limit: match builder.api_key {
+                Some(_) => Limit::Premium,
+                None => Limit::Free,
+            },
+            format: Format::default(),
+        })
     }
 }
 

@@ -35,7 +35,6 @@ impl Fetcher {
         }
     }
 
-    #[must_use]
     pub fn try_get(&mut self, amount: usize) -> Result<Vec<Proxy>, ApiError> {
         if self.proxies.len() >= amount {
             // If there's enough in the current list then just go ahead and fulfill without locking
@@ -74,14 +73,15 @@ impl Fetcher {
 
     #[must_use]
     fn request_builder(&self) -> ureq::Request {
-        let params = serde_urlencoded::to_string(&self.opts).expect(&format!(
-            "Failed to serialize url, please raise an issue to address this: {}",
-            constants::REPO_URI
-        ));
+        let params = serde_urlencoded::to_string(&self.opts).unwrap_or_else(|_| {
+            panic!(
+                "Failed to serialize url, please raise an issue to address this: {}",
+                constants::REPO_URI
+            )
+        });
         ureq::get(constants::API_URI).query_str(&params).build()
     }
 
-    #[must_use]
     #[cfg(not(test))]
     fn fetch(&self, request: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
         let resp = request.call();
@@ -134,10 +134,7 @@ pub struct Session {
 impl Session {
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            // Start far enough back to avoid delay
-            last_fetched: Arc::new(Mutex::new(Instant::now() - constants::DELAY)),
-        }
+        Self::default()
     }
 
     #[must_use]
@@ -148,6 +145,15 @@ impl Session {
     #[must_use]
     pub fn fetcher_with(&self, opts: Opts) -> Fetcher {
         Fetcher::new(self.last_fetched.clone(), opts)
+    }
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self {
+            // Start far enough back to avoid delay
+            last_fetched: Arc::new(Mutex::new(Instant::now() - constants::DELAY)),
+        }
     }
 }
 
