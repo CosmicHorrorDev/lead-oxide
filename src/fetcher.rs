@@ -193,9 +193,11 @@ mod tests {
         #[test]
         fn multiple_requests() {
             // Multiple requests can be done with a single method call
-            let mut fetcher = Fetcher::oneshot();
-            let proxies = fetcher.try_get(3 * FREE_LIMIT).unwrap();
-            assert_eq!(proxies.len(), 3 * FREE_LIMIT);
+            for i in 0..=2 * FREE_LIMIT {
+                let mut fetcher = Fetcher::oneshot();
+                let proxies = fetcher.try_get(i).unwrap();
+                assert_eq!(proxies.len(), i);
+            }
         }
 
         #[test]
@@ -244,8 +246,10 @@ mod tests {
 
             let end = Instant::now();
             let elapsed = end.duration_since(start);
-            eprintln!("{}", elapsed.as_millis());
-            assert!(elapsed >= (expected - delta) && elapsed <= (expected + delta));
+            eprintln!("Elapsed time: {:?}", elapsed);
+            eprintln!("Expected time: {:?} +/- {:?}", expected, delta);
+            assert!(elapsed >= (expected - delta), "Too fast");
+            assert!(elapsed <= (expected + delta), "Too slow");
 
             result
         }
