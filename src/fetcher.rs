@@ -82,42 +82,39 @@ impl Fetcher {
         ureq::get(constants::API_URI).query_str(&params).build()
     }
 
-    #[cfg(not(test))]
     fn fetch(&self, request: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
-        let resp = request.call();
+        if cfg!(not(test)) {
+            let resp = request.call();
 
-        if resp.ok() {
-            let resp_str = resp
-                .into_string()
-                .expect("Failed converting response to string");
+            if resp.ok() {
+                let resp_str = resp
+                    .into_string()
+                    .expect("Failed converting response to string");
 
-            match serde_json::from_str::<crate::types::Response>(&resp_str) {
-                Ok(response) => Ok(response.data),
-                Err(_) => Err(ApiError::from(resp_str)),
+                match serde_json::from_str::<crate::types::Response>(&resp_str) {
+                    Ok(response) => Ok(response.data),
+                    Err(_) => Err(ApiError::from(resp_str)),
+                }
+            } else {
+                Err(ApiError::from(resp))
             }
         } else {
-            Err(ApiError::from(resp))
+            // TODO: is there a better way to mock the api response? It would be nice to test that
+            // errors get interpreted right too. And if we could panic then we can test that the
+            // mutex getting poisoned works right
+            Ok(std::iter::repeat(Proxy {
+                ip: std::net::Ipv4Addr::new(1, 2, 3, 4),
+                port: 4321,
+                country: String::from("CA"),
+                last_checked: chrono::naive::NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
+                level: crate::types::Level::Anonymous,
+                protocol: crate::types::Protocol::Http,
+                time_to_connect: 21,
+                supports: crate::types::Supports::default(),
+            })
+            .take(self.opts.limit as usize)
+            .collect())
         }
-    }
-
-    // TODO: is there a better way to mock the api response? It would be nice to test that errors
-    //       get interpreted right too. And if we could panic then we can test that the mutex
-    //       getting poisoned works right
-    #[must_use]
-    #[cfg(test)]
-    fn fetch(&self, _not_needed: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
-        Ok(std::iter::repeat(Proxy {
-            ip: std::net::Ipv4Addr::new(1, 2, 3, 4),
-            port: 4321,
-            country: String::from("CA"),
-            last_checked: chrono::naive::NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
-            level: crate::types::Level::Anonymous,
-            protocol: crate::types::Protocol::Http,
-            time_to_connect: 21,
-            supports: crate::types::Supports::default(),
-        })
-        .take(self.opts.limit as usize)
-        .collect())
     }
 
     #[must_use]

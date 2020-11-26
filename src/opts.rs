@@ -157,12 +157,9 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
-    // TODO: can this be handled nicer? Maybe just hide it from the docs if that's possible
-    // Limit is only publicly used to get the proxy number during testing
-    #[cfg(test)]
+    // Note: Limit is only used publicly for testing. It is not considered part of the public api
+    #[doc(hidden)]
     pub limit: Limit,
-    #[cfg(not(test))]
-    limit: Limit,
     format: Format,
 }
 
@@ -232,7 +229,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_opts_builder() {
+    fn bounds_checking() {
         // Check the bounds
         let bad_opts = Opts::builder()
             .time_to_connect(Duration::from_secs(0))
@@ -253,46 +250,6 @@ mod tests {
             .last_checked(Duration::from_secs(0))
             .try_build();
         assert!(bad_opts.is_err());
-
-        // TODO: this is done twice, is there a standard way of de-deuplicating a value like this?
-        // Check full param listing
-        let opts = Opts::builder()
-            .api_key("<key>")
-            .level(Level::Elite)
-            .protocol(Protocol::Socks4)
-            .countries(Countries::block().country("ZH").country("ES"))
-            .last_checked(Duration::new(60 * 10, 0))
-            .port(NonZeroU16::new(8080).unwrap())
-            .time_to_connect(Duration::new(10, 0))
-            .cookies(true)
-            .connects_to_google(false)
-            .https(true)
-            .post(false)
-            .referer(true)
-            .forwards_user_agent(false)
-            .try_build()
-            .unwrap();
-
-        assert_eq!(
-            opts,
-            Opts {
-                api_key: Some(String::from("<key>")),
-                level: Some(Level::Elite),
-                protocol: Some(Protocol::Socks4),
-                countries: Some(Countries::BlockList(String::from("ZH,ES"))),
-                last_checked: Some(10),
-                port: Some(NonZeroU16::new(8080).unwrap()),
-                time_to_connect: Some(10),
-                cookies: Some(true),
-                connects_to_google: Some(false),
-                https: Some(true),
-                post: Some(false),
-                referer: Some(true),
-                forwards_user_agent: Some(false),
-                limit: Limit::Premium,
-                format: Format::Json
-            }
-        );
     }
 
     #[test]
