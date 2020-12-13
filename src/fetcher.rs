@@ -99,13 +99,15 @@ impl Fetcher {
                 Err(ApiError::from(resp))
             }
         } else {
+            use iso_country::Country;
+
             // TODO: is there a better way to mock the api response? It would be nice to test that
             // errors get interpreted right too. And if we could panic then we can test that the
             // mutex getting poisoned works right
             Ok(std::iter::repeat(Proxy {
                 ip: std::net::Ipv4Addr::new(1, 2, 3, 4),
                 port: 4321,
-                country: String::from("CA"),
+                country: Country::CA,
                 last_checked: chrono::naive::NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
                 level: crate::types::Level::Anonymous,
                 protocol: crate::types::Protocol::Http,
@@ -166,6 +168,8 @@ mod tests {
         use super::*;
         use crate::types::{Countries, Level};
 
+        use iso_country::Country;
+
         #[test]
         fn api_key() {
             let mut fetcher =
@@ -214,7 +218,7 @@ mod tests {
                 Opts::builder()
                     .level(Level::Elite)
                     .cookies(true)
-                    .countries(Countries::allow().country("CA").build())
+                    .countries(Countries::allowlist(&[Country::CA]))
                     .try_build()
                     .unwrap(),
             );

@@ -1,8 +1,9 @@
-use std::{fmt::Display, net::Ipv4Addr, str::FromStr};
+use std::net::Ipv4Addr;
 
 use chrono::naive::NaiveDateTime;
 
-use serde::{de, Deserialize, Deserializer, Serialize};
+use iso_country::Country;
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Action {
@@ -41,12 +42,12 @@ impl Countries {
     }
 
     #[must_use]
-    pub fn allowlist(countries: &[&str]) -> Self {
+    pub fn allowlist(countries: &[Country]) -> Self {
         Self::allow().countries(countries).build()
     }
 
     #[must_use]
-    pub fn blocklist(countries: &[&str]) -> Self {
+    pub fn blocklist(countries: &[Country]) -> Self {
         Self::block().countries(countries).build()
     }
 
@@ -92,15 +93,15 @@ impl CountriesBuilder {
     }
 
     #[must_use]
-    pub fn country(mut self, country: &str) -> Self {
+    pub fn country(mut self, country: Country) -> Self {
         self.list.push(country.to_string());
         self
     }
 
     #[must_use]
-    pub fn countries(mut self, countries: &[&str]) -> Self {
+    pub fn countries(mut self, countries: &[Country]) -> Self {
         for country in countries {
-            self = self.country(country);
+            self = self.country(*country);
         }
 
         self
@@ -139,41 +140,20 @@ pub struct Response {
 pub struct Proxy {
     // TODO: Combine this and the port number for a socketaddr? How to handle this
     pub ip: Ipv4Addr,
-    #[serde(deserialize_with = "deserialize_from_str")]
     // TODO: switch to non-zero u16
     pub port: u16,
-    pub country: String,
-    #[serde(deserialize_with = "deserialize_date")]
+    pub country: Country,
+    // #[serde(deserialize_with = "deserialize_date")]
     pub last_checked: NaiveDateTime,
     #[serde(rename = "proxy_level")]
     pub level: Level,
     #[serde(rename = "type")]
     pub protocol: Protocol,
-    #[serde(rename = "speed", deserialize_with = "deserialize_from_str")]
-    // TODO: switch to duration
+    #[serde(rename = "speed")]
+    // TODO: switch to duration (would be more explicit that it's minutes at least)
     pub time_to_connect: u8,
     #[serde(rename = "support")]
     pub supports: Supports,
-}
-
-// Fallback for anything that doesn't implement `Deserialize`
-fn deserialize_from_str<'de, S, D>(deserializer: D) -> Result<S, D::Error>
-where
-    S: FromStr,
-    S::Err: Display,
-    D: Deserializer<'de>,
-{
-    let s: String = Deserialize::deserialize(deserializer)?;
-    S::from_str(&s).map_err(de::Error::custom)
-}
-
-fn deserialize_date<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let time_fmt = "%Y-%m-%d %H:%M:%S";
-    let s: String = Deserialize::deserialize(deserializer)?;
-    NaiveDateTime::parse_from_str(&s, time_fmt).map_err(de::Error::custom)
 }
 
 #[derive(Deserialize, Clone, Copy, Debug, Default, PartialEq)]

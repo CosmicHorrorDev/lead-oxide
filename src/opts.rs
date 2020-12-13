@@ -146,6 +146,7 @@ pub struct Opts {
     level: Option<Level>,
     #[serde(rename = "type")]
     protocol: Option<Protocol>,
+    // An enpty country list is essentially `None`
     #[serde(flatten, skip_serializing_if = "Countries::is_empty")]
     countries: Countries,
     #[serde(rename = "last_check")]
@@ -233,6 +234,8 @@ impl TryFrom<OptsBuilder> for Opts {
 mod tests {
     use super::*;
 
+    use iso_country::Country;
+
     #[test]
     fn bounds_checking() {
         // Check the bounds
@@ -302,7 +305,7 @@ mod tests {
                 .api_key("<key>")
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
-                .countries(Countries::blocklist(&["ZH", "ES"]))
+                .countries(Countries::blocklist(&[Country::CH, Country::ES]))
                 .last_checked(Duration::from_secs(60 * 10))
                 .time_to_connect(Duration::from_secs(10))
                 .port(NonZeroU16::new(8080).unwrap())
@@ -323,7 +326,7 @@ mod tests {
                 // Enums
                 "level=elite",
                 "type=socks4",
-                "not_country=ZH%2CES",
+                "not_country=CH%2CES",
                 // Durations
                 "last_check=10",
                 "speed=10",
