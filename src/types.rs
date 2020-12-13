@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use chrono::naive::NaiveDateTime;
 
 use iso_country::Country;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Action {
@@ -142,6 +142,7 @@ pub struct Proxy {
     pub ip: Ipv4Addr,
     // TODO: switch to non-zero u16
     pub port: u16,
+    // TODO: I've seen "", how does this handle that
     pub country: Country,
     // #[serde(deserialize_with = "deserialize_date")]
     pub last_checked: NaiveDateTime,
@@ -156,29 +157,14 @@ pub struct Proxy {
     pub supports: Supports,
 }
 
+// TODO: I've seen null, how does this handle that
 #[derive(Deserialize, Clone, Copy, Debug, Default, PartialEq)]
 pub struct Supports {
-    // TODO: is there a better way to handle this deserialization?
-    #[serde(deserialize_with = "deserialize_bool")]
     pub https: bool,
-    #[serde(deserialize_with = "deserialize_bool")]
     pub get: bool,
-    #[serde(deserialize_with = "deserialize_bool")]
     pub post: bool,
-    #[serde(deserialize_with = "deserialize_bool")]
     pub cookies: bool,
-    #[serde(deserialize_with = "deserialize_bool")]
     pub referer: bool,
-    #[serde(rename = "user_agent", deserialize_with = "deserialize_bool")]
     pub forwards_user_agent: bool,
-    #[serde(rename = "google", deserialize_with = "deserialize_bool")]
     pub connects_to_google: bool,
-}
-
-fn deserialize_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let byte: u8 = Deserialize::deserialize(deserializer)?;
-    Ok(byte == 1)
 }
