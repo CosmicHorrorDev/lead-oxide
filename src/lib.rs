@@ -1,4 +1,4 @@
-#![deny(warnings, unsafe_code)]
+#![deny(unsafe_code)]
 
 mod constants;
 pub mod errors;

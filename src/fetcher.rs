@@ -18,12 +18,12 @@ pub struct Fetcher {
 impl Fetcher {
     #[must_use]
     pub fn oneshot() -> Self {
-        Self::oneshot_with(Opts::default())
+        Self::oneshot_with_opts(Opts::default())
     }
 
     #[must_use]
-    pub fn oneshot_with(opts: Opts) -> Self {
-        Session::new().fetcher_with(opts)
+    pub fn oneshot_with_opts(opts: Opts) -> Self {
+        Session::new().fetcher_with_opts(opts)
     }
 
     #[must_use]
@@ -136,11 +136,11 @@ impl Session {
 
     #[must_use]
     pub fn fetcher(&self) -> Fetcher {
-        self.fetcher_with(Opts::default())
+        self.fetcher_with_opts(Opts::default())
     }
 
     #[must_use]
-    pub fn fetcher_with(&self, opts: Opts) -> Fetcher {
+    pub fn fetcher_with_opts(&self, opts: Opts) -> Fetcher {
         Fetcher::new(self.last_fetched.clone(), opts)
     }
 }
@@ -169,7 +169,7 @@ mod tests {
         #[test]
         fn api_key() {
             let mut fetcher =
-                Fetcher::oneshot_with(Opts::builder().api_key("<key>").try_build().unwrap());
+                Fetcher::oneshot_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
 
             let single = fetcher.try_get(1).unwrap();
             let triple = fetcher.try_get(3).unwrap();
@@ -209,12 +209,12 @@ mod tests {
             let session = Session::new();
             let mut default = session.fetcher();
             let mut premium =
-                session.fetcher_with(Opts::builder().api_key("<key>").try_build().unwrap());
-            let mut custom = session.fetcher_with(
+                session.fetcher_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
+            let mut custom = session.fetcher_with_opts(
                 Opts::builder()
                     .level(Level::Elite)
                     .cookies(true)
-                    .countries(Countries::allow().country("CA"))
+                    .countries(Countries::allow().country("CA").build())
                     .try_build()
                     .unwrap(),
             );
@@ -299,8 +299,8 @@ mod tests {
                     let session = Session::new();
                     let mut keyless = session.fetcher();
                     // TODO: this option is used several times. Reuse somehow?
-                    let mut premium =
-                        session.fetcher_with(Opts::builder().api_key("<key>").try_build().unwrap());
+                    let mut premium = session
+                        .fetcher_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
 
                     let _ = keyless.try_get(2 * FREE_LIMIT);
                     let _ = premium.try_get(2 * PREMIUM_LIMIT);

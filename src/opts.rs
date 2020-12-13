@@ -8,6 +8,7 @@ use crate::{
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
+// TODO: allow for multiple things being specified on the different things that accept it?
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct OptsBuilder {
     api_key: Option<String>,
@@ -109,6 +110,9 @@ impl OptsBuilder {
     }
 }
 
+// TODO: see if there is a cleaner way of handling this
+// Note: internal api only. This is just public for testing
+#[doc(hidden)]
 #[derive(Serialize_repr, Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Limit {
@@ -124,7 +128,7 @@ impl Default for Limit {
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-pub enum Format {
+enum Format {
     // Techically txt is also allowed, but this library only uses json
     Json,
 }
@@ -142,10 +146,11 @@ pub struct Opts {
     level: Option<Level>,
     #[serde(rename = "type")]
     protocol: Option<Protocol>,
-    #[serde(flatten)]
-    countries: Option<Countries>,
+    #[serde(flatten, skip_serializing_if = "Countries::is_empty")]
+    countries: Countries,
     #[serde(rename = "last_check")]
     last_checked: Option<u64>,
+    // Note: using a port of 0 will return any port from the api :silly:
     port: Option<NonZeroU16>,
     #[serde(rename = "speed")]
     time_to_connect: Option<u64>,
@@ -157,7 +162,7 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
-    // Note: Limit is only used publicly for testing. It is not considered part of the public api
+    // Note: internal api only. This is just public for testing
     #[doc(hidden)]
     pub limit: Limit,
     format: Format,
@@ -205,7 +210,7 @@ impl TryFrom<OptsBuilder> for Opts {
             api_key: builder.api_key.clone(),
             level: builder.level,
             protocol: builder.protocol,
-            countries: builder.countries,
+            countries: builder.countries.unwrap_or_default(),
             last_checked: builder.last_checked.map(|duration| duration.as_secs() / 60),
             port: builder.port,
             time_to_connect: builder.time_to_connect.map(|duration| duration.as_secs()),
@@ -242,18 +247,19 @@ mod tests {
         assert!(bad_opts.is_err());
 
         let bad_opts = Opts::builder()
-            .last_checked(Duration::from_secs(1000 * 60 + 1))
+            .last_checked(Duration::from_secs(0))
             .try_build();
         assert!(bad_opts.is_err());
 
         let bad_opts = Opts::builder()
-            .last_checked(Duration::from_secs(0))
+            .last_checked(Duration::from_secs(60 * 60 + 1))
             .try_build();
         assert!(bad_opts.is_err());
     }
 
     #[test]
     fn url_serialization() -> Result<(), serde_urlencoded::ser::Error> {
+        // XXX: Only used once now btw
         let split_and_sort = |s: String| {
             let mut pieces: Vec<_> = s.split('&').map(String::from).collect();
             pieces.sort();
@@ -274,18 +280,29 @@ mod tests {
             Ok(())
         };
 
-        // Now to test a variety of Opts
+        // Base `Opts`
         check_equal_params(Opts::default(), &["format=json", "limit=5"])?;
+        // Using a key will up the limit
         check_equal_params(
             Opts::builder().api_key("<key>").try_build().unwrap(),
             &["api=%3Ckey%3E", "format=json", "limit=20"],
         )?;
+        // Empty countries list won't be included (api seems to work with an empty list, but I don't
+        // want to rely on this behavior
+        check_equal_params(
+            Opts::builder()
+                .countries(Countries::default())
+                .try_build()
+                .unwrap(),
+            &["format=json", "limit=5"],
+        )?;
+        // Kitchen sink
         check_equal_params(
             Opts::builder()
                 .api_key("<key>")
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
-                .countries(Countries::block().country("ZH").country("ES"))
+                .countries(Countries::blocklist(&["ZH", "ES"]))
                 .last_checked(Duration::from_secs(60 * 10))
                 .time_to_connect(Duration::from_secs(10))
                 .port(NonZeroU16::new(8080).unwrap())
@@ -306,7 +323,7 @@ mod tests {
                 // Enums
                 "level=elite",
                 "type=socks4",
-                "not_countries=ZH%2CES",
+                "not_country=ZH%2CES",
                 // Durations
                 "last_check=10",
                 "speed=10",

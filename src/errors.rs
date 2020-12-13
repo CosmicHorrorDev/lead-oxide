@@ -27,6 +27,7 @@ pub enum ApiError {
     #[error("Invalid API key, make sure your key is valid")]
     ApiKeyError,
 
+    // TODO: mention fetchers from multiple sessions
     #[error(
         r"You have exceeded the rate limit. This could be due to multiple programs using the API.
  If this is not the case then sorry but the API hates you, consider raising an issue."
@@ -58,11 +59,11 @@ impl From<Response> for ApiError {
                 resp: resp_str,
             }
         } else {
-            panic!(format!(
+            unreachable!(
                 "Tried creating ApiError from valid response ({}). Please raise an issue at {}.",
                 status,
                 constants::REPO_URI
-            ));
+            );
         }
     }
 }
@@ -83,11 +84,11 @@ impl From<String> for ApiError {
             DAILY_LIMIT => Self::DailyLimitError,
             NO_PROXY => Self::NoProxyError,
             _ => {
-                panic!(format!(
+                unreachable!(
                     "The API returned an unexpected message '{}'. Please raise an issue at {}",
                     s,
                     constants::REPO_URI
-                ));
+                );
             }
         }
     }

@@ -4,39 +4,111 @@ use chrono::naive::NaiveDateTime;
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Action {
+    Allow,
+    Block,
+}
+
+impl Default for Action {
+    fn default() -> Self {
+        Self::Block
+    }
+}
+
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
-    #[serde(rename = "countries")]
+    #[serde(rename = "country")]
     AllowList(String),
-    #[serde(rename = "not_countries")]
+    #[serde(rename = "not_country")]
     BlockList(String),
 }
 
+// TODO: as far as I know this only takes 2 letter lang codes, so maybe adding try build is for the
+// best. This also allows us to switch the builder to store the list in a single internal Vec
+// TODO: there's probably some resource that provides the 2 letter lang codes. Look around
+// TODO: provide a `countries` method for specifying multiple at once
+// TODO: does passing in an empty list of countries serialize correctly?
 impl Countries {
     #[must_use]
-    pub fn allow() -> Self {
-        Self::AllowList(String::new())
+    pub fn allow() -> CountriesBuilder {
+        CountriesBuilder::new(Action::Allow)
     }
 
     #[must_use]
-    pub fn block() -> Self {
-        Self::BlockList(String::new())
+    pub fn block() -> CountriesBuilder {
+        CountriesBuilder::new(Action::Block)
     }
 
     #[must_use]
-    pub fn country(self, country: &str) -> Self {
-        let smart_join = |list: String, new| {
-            if list.is_empty() {
-                String::from(new)
-            } else {
-                format!("{},{}", list, new)
-            }
-        };
+    pub fn allowlist(countries: &[&str]) -> Self {
+        Self::allow().countries(countries).build()
+    }
 
+    #[must_use]
+    pub fn blocklist(countries: &[&str]) -> Self {
+        Self::block().countries(countries).build()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
         match self {
-            Self::AllowList(list) => Self::AllowList(smart_join(list, country)),
-            Self::BlockList(list) => Self::BlockList(smart_join(list, country)),
+            Self::AllowList(countries) => countries.is_empty(),
+            Self::BlockList(countries) => countries.is_empty(),
         }
+    }
+}
+
+impl Default for Countries {
+    fn default() -> Self {
+        CountriesBuilder::default().build()
+    }
+}
+
+impl From<CountriesBuilder> for Countries {
+    fn from(builder: CountriesBuilder) -> Self {
+        let CountriesBuilder { list, action } = builder;
+
+        match action {
+            Action::Allow => Self::AllowList(list.join(",")),
+            Action::Block => Self::BlockList(list.join(",")),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CountriesBuilder {
+    list: Vec<String>,
+    action: Action,
+}
+
+impl CountriesBuilder {
+    #[must_use]
+    fn new(action: Action) -> Self {
+        Self {
+            list: Vec::new(),
+            action,
+        }
+    }
+
+    #[must_use]
+    pub fn country(mut self, country: &str) -> Self {
+        self.list.push(country.to_string());
+        self
+    }
+
+    #[must_use]
+    pub fn countries(mut self, countries: &[&str]) -> Self {
+        for country in countries {
+            self = self.country(country);
+        }
+
+        self
+    }
+
+    #[must_use]
+    pub fn build(self) -> Countries {
+        Countries::from(self)
     }
 }
 
@@ -55,6 +127,9 @@ pub enum Protocol {
     Socks5,
 }
 
+// TODO: Is this needed? Can we just pull out "data" directly somehow?
+// Note: Interal api only
+#[doc(hidden)]
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct Response {
     pub data: Vec<Proxy>,
