@@ -266,17 +266,11 @@ mod tests {
 
     #[test]
     fn url_serialization() -> Result<(), serde_urlencoded::ser::Error> {
-        // XXX: Only used once now btw
-        let split_and_sort = |s: String| {
-            let mut pieces: Vec<_> = s.split('&').map(String::from).collect();
-            pieces.sort();
-            pieces
-        };
-
         let check_equal_params = |opts, expected: &[&str]| {
             // Convert `opts` to a url and sort the values
             let url = serde_urlencoded::to_string(&opts)?;
-            let params = split_and_sort(url);
+            let mut params: Vec<_> = url.split('&').map(String::from).collect();
+            params.sort();
 
             // Sort the `expected` values
             let mut expected = expected.to_vec();
