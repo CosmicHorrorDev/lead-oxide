@@ -81,7 +81,7 @@ pub fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
         .into_iter()
         .map(Proxy::from)
         // Just to play it safe we filter out any results with an incorrect country field. We could
-        // play it safer and only use this in the presence of a blocklist if this causes issues.
+        // be smarter and only use this in the presence of a blocklist if this causes issues.
         .filter(|Proxy { country, .. }| match country {
             Country::Unspecified => false,
             _ => true,

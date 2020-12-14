@@ -174,6 +174,10 @@ impl Opts {
     pub fn builder() -> OptsBuilder {
         OptsBuilder::default()
     }
+
+    pub fn is_premium(&self) -> bool {
+        self.api_key.is_some()
+    }
 }
 
 impl TryFrom<OptsBuilder> for Opts {

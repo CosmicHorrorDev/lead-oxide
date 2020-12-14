@@ -48,28 +48,39 @@ impl Fetcher {
             // Otherwise we need to lock and request the api
             let mut request = self.request_builder();
 
-            let mut last_fetched = match self.last_fetched.lock() {
-                Ok(last_fetched) => last_fetched,
-                Err(err) => {
-                    // If the lock was poisoned then play it safe and reset the timer
-                    let mut poisioned = err.into_inner();
-                    *poisioned = Instant::now();
-                    poisioned
+            if self.opts.is_premium() {
+                // Don't need to mess with any delays if we're using an api key. (This information
+                // was based off emailing the dev. I never got an api key to test)
+                while self.proxies.len() < amount {
+                    let mut proxies = self.fetch(&mut request)?;
+                    self.proxies.append(&mut proxies);
                 }
-            };
+            } else {
+                // If we don't have an api key then we need to coordinate delays to ensure we don't
+                // do more than one request per `constants::DELAY`
+                let mut last_fetched = match self.last_fetched.lock() {
+                    Ok(last_fetched) => last_fetched,
+                    Err(err) => {
+                        // If the lock was poisoned then play it safe and reset the timer
+                        let mut poisioned = err.into_inner();
+                        *poisioned = Instant::now();
+                        poisioned
+                    }
+                };
 
-            while self.proxies.len() < amount {
-                // Delay to prevent rate limiting
-                let delta = Instant::now().duration_since(*last_fetched);
-                if delta < constants::DELAY {
-                    thread::sleep(constants::DELAY - delta);
+                while self.proxies.len() < amount {
+                    // Delay to prevent rate limiting
+                    let delta = Instant::now().duration_since(*last_fetched);
+                    if delta < constants::DELAY {
+                        thread::sleep(constants::DELAY - delta);
+                    }
+
+                    let mut proxies = self.fetch(&mut request)?;
+                    self.proxies.append(&mut proxies);
+
+                    // Update the request time
+                    *last_fetched = Instant::now();
                 }
-
-                let mut proxies = self.fetch(&mut request)?;
-                self.proxies.append(&mut proxies);
-
-                // Update the request time
-                *last_fetched = Instant::now();
             }
 
             Ok(self.proxies.split_off(self.proxies.len() - amount))
@@ -312,13 +323,16 @@ mod tests {
             time_it(
                 || {
                     let session = Session::new();
-                    let mut keyless = session.fetcher();
+                    let mut keyless1 = session.fetcher();
+                    let mut keyless2 = session.fetcher();
                     // TODO: this option is used several times. Reuse somehow?
                     let mut premium = session
                         .fetcher_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
 
-                    let _ = keyless.try_get(2 * FREE_LIMIT);
+                    let _ = keyless1.try_get(2 * FREE_LIMIT);
+                    // Even while the keyless ones would be delayed, the premium is not
                     let _ = premium.try_get(2 * PREMIUM_LIMIT);
+                    let _ = keyless2.try_get(2 * FREE_LIMIT);
                 },
                 // 3 * delay +/- 10ms
                 (3 * constants::DELAY, TEN_MILLISEC),
