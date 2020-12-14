@@ -1,18 +1,6 @@
 use iso_country::Country;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Action {
-    Allow,
-    Block,
-}
-
-impl Default for Action {
-    fn default() -> Self {
-        Self::Block
-    }
-}
-
 // TODO: this could be valid for the whole time now, so could remove the builder for it
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
@@ -24,23 +12,13 @@ pub enum Countries {
 
 impl Countries {
     #[must_use]
-    pub fn allow() -> CountriesBuilder {
-        CountriesBuilder::new(Action::Allow)
+    pub fn allow() -> Self {
+        Self::AllowList(String::new())
     }
 
     #[must_use]
-    pub fn block() -> CountriesBuilder {
-        CountriesBuilder::new(Action::Block)
-    }
-
-    #[must_use]
-    pub fn allowlist(countries: &[Country]) -> Self {
-        Self::allow().countries(countries).build()
-    }
-
-    #[must_use]
-    pub fn blocklist(countries: &[Country]) -> Self {
-        Self::block().countries(countries).build()
+    pub fn block() -> Self {
+        Self::BlockList(String::new())
     }
 
     #[must_use]
@@ -49,53 +27,6 @@ impl Countries {
             Self::AllowList(countries) => countries.is_empty(),
             Self::BlockList(countries) => countries.is_empty(),
         }
-    }
-}
-
-impl Default for Countries {
-    fn default() -> Self {
-        CountriesBuilder::default().build()
-    }
-}
-
-impl From<CountriesBuilder> for Countries {
-    fn from(builder: CountriesBuilder) -> Self {
-        let CountriesBuilder { list, action } = builder;
-
-        match action {
-            Action::Allow => Self::AllowList(list.join(",")),
-            Action::Block => Self::BlockList(list.join(",")),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct CountriesBuilder {
-    list: Vec<String>,
-    action: Action,
-}
-
-impl CountriesBuilder {
-    #[must_use]
-    fn new(action: Action) -> Self {
-        Self {
-            list: Vec::new(),
-            action,
-        }
-    }
-
-    #[must_use]
-    pub fn country(mut self, country: Country) -> Self {
-        // TODO: make sure this is documented. Mention that unknows are automatically filtered out
-        // if any country is used in the allow or blocklist
-        if let Country::Unspecified = country {
-            panic!(format!(
-                "This library doesn't allow `Unspecified` country in the allow or blocklist"
-            ));
-        }
-
-        self.list.push(country.to_string());
-        self
     }
 
     #[must_use]
@@ -108,8 +39,35 @@ impl CountriesBuilder {
     }
 
     #[must_use]
-    pub fn build(self) -> Countries {
-        Countries::from(self)
+    pub fn country(self, country: Country) -> Self {
+        // TODO: make sure this is documented. Mention that unknows are automatically filtered out
+        // if any country is used in the allow or blocklist
+        if let Country::Unspecified = country {
+            panic!(format!(
+                "This library doesn't allow `Unspecified` country in the allow or blocklist"
+            ));
+        }
+
+        let push_country = |list: String, new_tag: Country| {
+            let new_tag = new_tag.to_string();
+            if list.is_empty() {
+                new_tag
+            } else {
+                [list, new_tag].join(",")
+            }
+        };
+
+        match self {
+            Self::AllowList(list) => Self::AllowList(push_country(list, country)),
+            Self::BlockList(list) => Self::BlockList(push_country(list, country)),
+        }
+    }
+}
+
+impl Default for Countries {
+    fn default() -> Self {
+        // Default is to block none
+        Countries::block()
     }
 }
 

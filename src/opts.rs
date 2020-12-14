@@ -305,7 +305,7 @@ mod tests {
                 .api_key("<key>")
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
-                .countries(Countries::blocklist(&[Country::CH, Country::ES]))
+                .countries(Countries::block().countries(&[Country::CH, Country::ES]))
                 .last_checked(Duration::from_secs(60 * 10))
                 .time_to_connect(Duration::from_secs(10))
                 .port(NonZeroU16::new(8080).unwrap())

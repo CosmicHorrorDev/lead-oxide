@@ -229,7 +229,7 @@ mod tests {
                 Opts::builder()
                     .level(Level::Elite)
                     .cookies(true)
-                    .countries(Countries::allowlist(&[Country::CA]))
+                    .countries(Countries::allow().country(Country::CA))
                     .try_build()
                     .unwrap(),
             );
