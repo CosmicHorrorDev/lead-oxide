@@ -125,76 +125,69 @@ mod test {
     use super::*;
 
     use chrono::{NaiveDate, NaiveTime};
+    use std::{fs, path::Path};
 
     #[test]
     fn deserialization() -> Result<(), serde_json::Error> {
-        // TODO: make this a platform independent path
-        let raw_response = include_str!("test_data/response.json");
-        let proxies = proxies_from_json(raw_response)?;
+        // Just some setup
+        let sample_file = Path::new("tests").join("samples").join("response.json");
+        let raw_response = fs::read_to_string(&sample_file).expect("Can't open the response file");
+
+        // And now onto testing
+        let proxies = proxies_from_json(&raw_response)?;
 
         let date = NaiveDate::from_ymd(2020, 12, 13);
+
+        let common = Proxy {
+            socket: "1.2.3.4:1234".parse().unwrap(),
+            country: Country::US,
+            last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(0, 0, 0)),
+            level: Level::Elite,
+            protocol: Protocol::Http,
+            time_to_connect: Duration::from_secs(0),
+            supports: Supports {
+                get: true,
+                post: true,
+                cookies: true,
+                referer: true,
+                forwards_user_agent: true,
+                ..Supports::default()
+            },
+        };
 
         // The proxy with an empty country field got filtered out
         let ideal = vec![
             Proxy {
                 socket: "67.225.164.154:80".parse().unwrap(),
-                country: Country::US,
                 last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 6, 41)),
-                level: Level::Elite,
-                protocol: Protocol::Http,
                 time_to_connect: Duration::from_secs(10),
-                supports: Supports {
-                    get: true,
-                    post: true,
-                    cookies: true,
-                    referer: true,
-                    forwards_user_agent: true,
-                    ..Supports::default()
-                },
+                ..common
             },
             Proxy {
                 socket: "35.181.4.4:80".parse().unwrap(),
-                country: Country::US,
                 last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 10, 11)),
-                level: Level::Elite,
-                protocol: Protocol::Http,
                 time_to_connect: Duration::from_secs(1),
                 supports: Supports {
                     forwards_user_agent: true,
                     ..Supports::default()
                 },
+                ..common
             },
             Proxy {
                 socket: "89.24.76.185:32842".parse().unwrap(),
                 country: Country::CZ,
                 last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 1, 52)),
-                level: Level::Elite,
                 protocol: Protocol::Socks5,
                 time_to_connect: Duration::from_secs(18),
-                supports: Supports {
-                    get: true,
-                    post: true,
-                    cookies: true,
-                    referer: true,
-                    forwards_user_agent: true,
-                    ..Supports::default()
-                },
+                ..common
             },
             Proxy {
                 socket: "125.99.120.166:40390".parse().unwrap(),
                 country: Country::IN,
                 last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 10, 11)),
-                level: Level::Elite,
                 protocol: Protocol::Socks4,
                 time_to_connect: Duration::from_secs(14),
-                supports: Supports {
-                    get: true,
-                    post: true,
-                    cookies: true,
-                    referer: true,
-                    forwards_user_agent: true,
-                    ..Supports::default()
-                },
+                ..common
             },
         ];
 
