@@ -1,4 +1,7 @@
-use std::net::Ipv4Addr;
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    time::Duration,
+};
 
 use chrono::naive::NaiveDateTime;
 
@@ -17,6 +20,7 @@ impl Default for Action {
     }
 }
 
+// TODO: this could be valid for the whole time now, so could remove the builder for it
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
     #[serde(rename = "country")]
@@ -25,11 +29,6 @@ pub enum Countries {
     BlockList(String),
 }
 
-// TODO: as far as I know this only takes 2 letter lang codes, so maybe adding try build is for the
-// best. This also allows us to switch the builder to store the list in a single internal Vec
-// TODO: there's probably some resource that provides the 2 letter lang codes. Look around
-// TODO: provide a `countries` method for specifying multiple at once
-// TODO: does passing in an empty list of countries serialize correctly?
 impl Countries {
     #[must_use]
     pub fn allow() -> CountriesBuilder {
@@ -126,45 +125,4 @@ pub enum Protocol {
     Http,
     Socks4,
     Socks5,
-}
-
-// TODO: Is this needed? Can we just pull out "data" directly somehow?
-// Note: Interal api only
-#[doc(hidden)]
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-pub struct Response {
-    pub data: Vec<Proxy>,
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-pub struct Proxy {
-    // TODO: Combine this and the port number for a socketaddr? How to handle this
-    pub ip: Ipv4Addr,
-    // TODO: switch to non-zero u16
-    pub port: u16,
-    // TODO: I've seen "", how does this handle that
-    pub country: Country,
-    // #[serde(deserialize_with = "deserialize_date")]
-    pub last_checked: NaiveDateTime,
-    #[serde(rename = "proxy_level")]
-    pub level: Level,
-    #[serde(rename = "type")]
-    pub protocol: Protocol,
-    #[serde(rename = "speed")]
-    // TODO: switch to duration (would be more explicit that it's minutes at least)
-    pub time_to_connect: u8,
-    #[serde(rename = "support")]
-    pub supports: Supports,
-}
-
-// TODO: I've seen null, how does this handle that
-#[derive(Deserialize, Clone, Copy, Debug, Default, PartialEq)]
-pub struct Supports {
-    pub https: bool,
-    pub get: bool,
-    pub post: bool,
-    pub cookies: bool,
-    pub referer: bool,
-    pub forwards_user_agent: bool,
-    pub connects_to_google: bool,
 }

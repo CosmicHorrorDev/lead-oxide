@@ -4,7 +4,12 @@ use std::{
     time::Instant,
 };
 
-use crate::{constants, errors::ApiError, opts::Opts, types::Proxy};
+use crate::{
+    constants,
+    errors::ApiError,
+    opts::Opts,
+    proxy::{proxies_from_json, Proxy},
+};
 
 #[derive(Clone, Debug)]
 pub struct Fetcher {
@@ -91,28 +96,34 @@ impl Fetcher {
                     .into_string()
                     .expect("Failed converting response to string");
 
-                match serde_json::from_str::<crate::types::Response>(&resp_str) {
-                    Ok(response) => Ok(response.data),
-                    Err(_) => Err(ApiError::from(resp_str)),
-                }
+                proxies_from_json(&resp_str).map_err(|_| ApiError::from(resp_str))
             } else {
                 Err(ApiError::from(resp))
             }
         } else {
             use iso_country::Country;
 
+            use crate::{
+                proxy::Supports,
+                types::{Level, Protocol},
+            };
+
+            use std::{
+                net::{Ipv4Addr, SocketAddrV4},
+                time::Duration,
+            };
+
             // TODO: is there a better way to mock the api response? It would be nice to test that
             // errors get interpreted right too. And if we could panic then we can test that the
             // mutex getting poisoned works right
             Ok(std::iter::repeat(Proxy {
-                ip: std::net::Ipv4Addr::new(1, 2, 3, 4),
-                port: 4321,
+                socket: SocketAddrV4::new(Ipv4Addr::new(1, 2, 3, 4), 4321),
                 country: Country::CA,
                 last_checked: chrono::naive::NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
-                level: crate::types::Level::Anonymous,
-                protocol: crate::types::Protocol::Http,
-                time_to_connect: 21,
-                supports: crate::types::Supports::default(),
+                level: Level::Anonymous,
+                protocol: Protocol::Http,
+                time_to_connect: Duration::from_secs(21),
+                supports: Supports::default(),
             })
             .take(self.opts.limit as usize)
             .collect())
