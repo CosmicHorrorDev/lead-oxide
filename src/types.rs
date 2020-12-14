@@ -1,10 +1,3 @@
-use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    time::Duration,
-};
-
-use chrono::naive::NaiveDateTime;
-
 use iso_country::Country;
 use serde::{Deserialize, Serialize};
 
@@ -93,6 +86,14 @@ impl CountriesBuilder {
 
     #[must_use]
     pub fn country(mut self, country: Country) -> Self {
+        // TODO: make sure this is documented. Mention that unknows are automatically filtered out
+        // if any country is used in the allow or blocklist
+        if let Country::Unspecified = country {
+            panic!(format!(
+                "This library doesn't allow `Unspecified` country in the allow or blocklist"
+            ));
+        }
+
         self.list.push(country.to_string());
         self
     }

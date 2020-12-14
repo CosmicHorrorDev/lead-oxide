@@ -53,16 +53,13 @@ pub struct Proxy {
 
 impl From<RawProxy> for Proxy {
     fn from(raw: RawProxy) -> Self {
-        // let port = raw.port.parse().expect("The API returned an invalid port");
-        // let socket = SocketAddrV4::new(raw.ip, port);
-
         let last_checked = NaiveDateTime::parse_from_str(&raw.last_checked, "%F %T")
             .expect("The API returned an invalid time");
 
         let secs_to_connect = raw
             .time_to_connect
             .parse()
-            .expect("The API returned an invalid time");
+            .expect("The API returned an invalid int");
         let time_to_connect = Duration::from_secs(secs_to_connect);
 
         Self {
@@ -79,7 +76,17 @@ impl From<RawProxy> for Proxy {
 
 pub fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
     let resp: Response = serde_json::from_str(json)?;
-    Ok(resp.data.into_iter().map(Proxy::from).collect())
+    Ok(resp
+        .data
+        .into_iter()
+        .map(Proxy::from)
+        // Just to play it safe we filter out any results with an incorrect country field. We could
+        // play it safer and only use this in the presence of a blocklist if this causes issues.
+        .filter(|Proxy { country, .. }| match country {
+            Country::Unspecified => false,
+            _ => true,
+        })
+        .collect())
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -127,6 +134,7 @@ mod test {
 
         let date = NaiveDate::from_ymd(2020, 12, 13);
 
+        // The proxy with an empty country field got filtered out
         let ideal = vec![
             Proxy {
                 socket: "67.225.164.154:80".parse().unwrap(),
@@ -152,22 +160,6 @@ mod test {
                 protocol: Protocol::Http,
                 time_to_connect: Duration::from_secs(1),
                 supports: Supports {
-                    forwards_user_agent: true,
-                    ..Supports::default()
-                },
-            },
-            Proxy {
-                socket: "45.236.172.146:999".parse().unwrap(),
-                country: Country::Unspecified,
-                last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 1, 52)),
-                level: Level::Anonymous,
-                protocol: Protocol::Http,
-                time_to_connect: Duration::from_secs(12),
-                supports: Supports {
-                    get: true,
-                    post: true,
-                    cookies: true,
-                    referer: true,
                     forwards_user_agent: true,
                     ..Supports::default()
                 },
