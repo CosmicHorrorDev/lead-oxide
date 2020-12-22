@@ -82,10 +82,7 @@ pub fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
         .map(Proxy::from)
         // Just to play it safe we filter out any results with an incorrect country field. We could
         // be smarter and only use this in the presence of a blocklist if this causes issues.
-        .filter(|Proxy { country, .. }| match country {
-            Country::Unspecified => false,
-            _ => true,
-        })
+        .filter(|&Proxy { country, .. }| country != Country::Unspecified)
         .collect())
 }
 
@@ -124,7 +121,7 @@ impl From<RawSupports> for Supports {
 mod test {
     use super::*;
 
-    use chrono::{NaiveDate, NaiveTime};
+    use chrono::NaiveDate;
     use std::{fs, path::Path};
 
     #[test]
@@ -141,7 +138,7 @@ mod test {
         let common = Proxy {
             socket: "1.2.3.4:1234".parse().unwrap(),
             country: Country::US,
-            last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(0, 0, 0)),
+            last_checked: date.and_hms(0, 0, 0),
             level: Level::Elite,
             protocol: Protocol::Http,
             time_to_connect: Duration::from_secs(0),
@@ -159,13 +156,13 @@ mod test {
         let ideal = vec![
             Proxy {
                 socket: "67.225.164.154:80".parse().unwrap(),
-                last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 6, 41)),
+                last_checked: date.and_hms(20, 6, 41),
                 time_to_connect: Duration::from_secs(10),
                 ..common
             },
             Proxy {
                 socket: "35.181.4.4:80".parse().unwrap(),
-                last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 10, 11)),
+                last_checked: date.and_hms(20, 10, 11),
                 time_to_connect: Duration::from_secs(1),
                 supports: Supports {
                     forwards_user_agent: true,
@@ -176,7 +173,7 @@ mod test {
             Proxy {
                 socket: "89.24.76.185:32842".parse().unwrap(),
                 country: Country::CZ,
-                last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 1, 52)),
+                last_checked: date.and_hms(20, 1, 52),
                 protocol: Protocol::Socks5,
                 time_to_connect: Duration::from_secs(18),
                 ..common
@@ -184,7 +181,7 @@ mod test {
             Proxy {
                 socket: "125.99.120.166:40390".parse().unwrap(),
                 country: Country::IN,
-                last_checked: NaiveDateTime::new(date, NaiveTime::from_hms(20, 10, 11)),
+                last_checked: date.and_hms(20, 10, 11),
                 protocol: Protocol::Socks4,
                 time_to_connect: Duration::from_secs(14),
                 ..common

@@ -14,23 +14,11 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Fetcher {
     last_fetched: Arc<Mutex<Instant>>,
-    // TODO: store the url so we don't have to keep rebuilding it? It won't change while the fetcher
-    // is running
     opts: Opts,
     proxies: Vec<Proxy>,
 }
 
 impl Fetcher {
-    #[must_use]
-    pub fn oneshot() -> Self {
-        Self::oneshot_with_opts(Opts::default())
-    }
-
-    #[must_use]
-    pub fn oneshot_with_opts(opts: Opts) -> Self {
-        Session::new().fetcher_with_opts(opts)
-    }
-
     #[must_use]
     fn new(last_fetched: Arc<Mutex<Instant>>, opts: Opts) -> Self {
         Self {
@@ -112,6 +100,7 @@ impl Fetcher {
                 Err(ApiError::from(resp))
             }
         } else {
+            use chrono::naive::NaiveDate;
             use iso_country::Country;
 
             use crate::{
@@ -120,6 +109,7 @@ impl Fetcher {
             };
 
             use std::{
+                iter,
                 net::{Ipv4Addr, SocketAddrV4},
                 time::Duration,
             };
@@ -127,10 +117,10 @@ impl Fetcher {
             // TODO: is there a better way to mock the api response? It would be nice to test that
             // errors get interpreted right too. And if we could panic then we can test that the
             // mutex getting poisoned works right
-            Ok(std::iter::repeat(Proxy {
+            Ok(iter::repeat(Proxy {
                 socket: SocketAddrV4::new(Ipv4Addr::new(1, 2, 3, 4), 4321),
                 country: Country::CA,
-                last_checked: chrono::naive::NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
+                last_checked: NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
                 level: Level::Anonymous,
                 protocol: Protocol::Http,
                 time_to_connect: Duration::from_secs(21),
@@ -194,8 +184,8 @@ mod tests {
 
         #[test]
         fn api_key() {
-            let mut fetcher =
-                Fetcher::oneshot_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
+            let premium_opts = Opts::builder().api_key("<key>").try_build().unwrap();
+            let mut fetcher = Session::new().fetcher_with_opts(premium_opts);
 
             let single = fetcher.try_get(1).unwrap();
             let triple = fetcher.try_get(3).unwrap();
@@ -208,7 +198,7 @@ mod tests {
 
         #[test]
         fn keyless() {
-            let mut fetcher = Fetcher::oneshot();
+            let mut fetcher = Session::new().fetcher();
 
             let single = fetcher.try_get(1).unwrap();
             let triple = fetcher.try_get(3).unwrap();
@@ -223,7 +213,7 @@ mod tests {
         fn multiple_requests() {
             // Multiple requests can be done with a single method call
             for i in 0..=2 * FREE_LIMIT {
-                let mut fetcher = Fetcher::oneshot();
+                let mut fetcher = Session::new().fetcher();
                 let proxies = fetcher.try_get(i).unwrap();
                 assert_eq!(proxies.len(), i);
             }
@@ -288,7 +278,7 @@ mod tests {
             // Requesting the first `FREE_LIMIT` is done in one call
             let mut fetcher = time_it(
                 || {
-                    let mut fetcher = Fetcher::oneshot();
+                    let mut fetcher = Session::new().fetcher();
                     let _ = fetcher.try_get(FREE_LIMIT);
                     fetcher
                 },
