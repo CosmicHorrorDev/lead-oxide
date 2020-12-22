@@ -27,79 +27,66 @@ pub struct OptsBuilder {
 }
 
 impl OptsBuilder {
-    #[must_use]
     pub fn api_key(mut self, api_key: &str) -> Self {
         self.api_key = Some(api_key.to_string());
         self
     }
 
-    #[must_use]
     pub fn level(mut self, level: Level) -> Self {
         self.level = Some(level);
         self
     }
 
-    #[must_use]
     pub fn protocol(mut self, protocol: Protocol) -> Self {
         self.protocol = Some(protocol);
         self
     }
 
-    #[must_use]
     pub fn countries(mut self, countries: Countries) -> Self {
         self.countries = Some(countries);
         self
     }
 
-    #[must_use]
     pub fn last_checked(mut self, last_checked: Duration) -> Self {
         self.last_checked = Some(last_checked);
         self
     }
 
-    #[must_use]
     pub fn port(mut self, port: NonZeroU16) -> Self {
         self.port = Some(port);
         self
     }
 
-    #[must_use]
     pub fn time_to_connect(mut self, time_to_connect: Duration) -> Self {
         self.time_to_connect = Some(time_to_connect);
         self
     }
 
-    #[must_use]
     pub fn cookies(mut self, cookies: bool) -> Self {
         self.cookies = Some(cookies);
         self
     }
 
-    #[must_use]
     pub fn connects_to_google(mut self, connects_to_google: bool) -> Self {
         self.connects_to_google = Some(connects_to_google);
         self
     }
 
-    #[must_use]
     pub fn https(mut self, https: bool) -> Self {
         self.https = Some(https);
         self
     }
 
-    #[must_use]
     pub fn post(mut self, post: bool) -> Self {
         self.post = Some(post);
         self
     }
 
-    #[must_use]
     pub fn referer(mut self, referer: bool) -> Self {
         self.referer = Some(referer);
         self
     }
 
-    #[must_use]
     pub fn forwards_user_agent(mut self, forwards_user_agent: bool) -> Self {
         self.forwards_user_agent = Some(forwards_user_agent);
         self
@@ -170,7 +157,6 @@ pub struct Opts {
 }
 
 impl Opts {
-    #[must_use]
     pub fn builder() -> OptsBuilder {
         OptsBuilder::default()
     }

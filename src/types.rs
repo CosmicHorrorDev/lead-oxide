@@ -11,17 +11,14 @@ pub enum Countries {
 }
 
 impl Countries {
-    #[must_use]
     pub fn allow() -> Self {
         Self::AllowList(String::new())
     }
 
-    #[must_use]
     pub fn block() -> Self {
         Self::BlockList(String::new())
     }
 
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         match self {
             Self::AllowList(countries) => countries.is_empty(),
@@ -29,7 +26,6 @@ impl Countries {
         }
     }
 
-    #[must_use]
     pub fn countries(mut self, countries: &[Country]) -> Self {
         for country in countries {
             self = self.country(*country);
@@ -38,7 +34,6 @@ impl Countries {
         self
     }
 
-    #[must_use]
     pub fn country(self, country: Country) -> Self {
         // TODO: make sure this is documented. Mention that unknows are automatically filtered out
         // if any country is used in the allow or blocklist

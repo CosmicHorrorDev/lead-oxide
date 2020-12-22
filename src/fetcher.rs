@@ -19,7 +19,6 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
-    #[must_use]
     fn new(last_fetched: Arc<Mutex<Instant>>, opts: Opts) -> Self {
         Self {
             last_fetched,
@@ -75,7 +74,6 @@ impl Fetcher {
         }
     }
 
-    #[must_use]
     fn request_builder(&self) -> ureq::Request {
         let params = serde_urlencoded::to_string(&self.opts).unwrap_or_else(|_| {
             panic!(
@@ -131,7 +129,6 @@ impl Fetcher {
         }
     }
 
-    #[must_use]
     pub fn drain(self) -> Vec<Proxy> {
         self.proxies
     }
@@ -143,17 +140,14 @@ pub struct Session {
 }
 
 impl Session {
-    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    #[must_use]
     pub fn fetcher(&self) -> Fetcher {
         self.fetcher_with_opts(Opts::default())
     }
 
-    #[must_use]
     pub fn fetcher_with_opts(&self, opts: Opts) -> Fetcher {
         Fetcher::new(self.last_fetched.clone(), opts)
     }
