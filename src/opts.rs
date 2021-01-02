@@ -97,12 +97,9 @@ impl OptsBuilder {
     }
 }
 
-// TODO: see if there is a cleaner way of handling this
-// Note: internal api only. This is just public for testing
-#[doc(hidden)]
 #[derive(Serialize_repr, Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
-pub enum Limit {
+pub(crate) enum Limit {
     Free = 5,
     Premium = 20,
 }
@@ -150,9 +147,7 @@ pub struct Opts {
     referer: Option<bool>,
     #[serde(rename = "user_agent")]
     forwards_user_agent: Option<bool>,
-    // Note: internal api only. This is just public for testing
-    #[doc(hidden)]
-    pub limit: Limit,
+    pub(crate) limit: Limit,
     format: Format,
 }
 
@@ -161,7 +156,7 @@ impl Opts {
         OptsBuilder::default()
     }
 
-    pub fn is_premium(&self) -> bool {
+    pub(crate) fn is_premium(&self) -> bool {
         self.api_key.is_some()
     }
 }
