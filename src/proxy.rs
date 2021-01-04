@@ -4,7 +4,7 @@ use crate::types::{Level, Protocol};
 
 use chrono::NaiveDateTime;
 use iso_country::Country;
-use serde::Deserialize;
+use serde::{de::Deserializer, Deserialize};
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 struct Response {
@@ -15,6 +15,7 @@ struct Response {
 struct RawProxy {
     #[serde(rename = "ipPort")]
     socket: SocketAddrV4,
+    #[serde(deserialize_with = "ignore_bad_countries")]
     country: Country,
     last_checked: String,
     #[serde(rename = "proxy_level")]
@@ -25,6 +26,14 @@ struct RawProxy {
     time_to_connect: String,
     #[serde(rename = "support")]
     supports: RawSupports,
+}
+
+// Sometimes country codes other than iso 3166-1 are returned so switch those to unspecified
+fn ignore_bad_countries<'de, D>(deserializer: D) -> Result<Country, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).or(Ok(Country::Unspecified))
 }
 
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq)]
@@ -53,6 +62,7 @@ pub struct Proxy {
 
 impl From<RawProxy> for Proxy {
     fn from(raw: RawProxy) -> Self {
+        // TODO: have this list the lib repo
         let last_checked = NaiveDateTime::parse_from_str(&raw.last_checked, "%F %T")
             .expect("The API returned an invalid time");
 

@@ -94,7 +94,26 @@
         "user_agent": 1,
         "google": 0
       }
+    },
+    {
+      "ipPort": "188.226.141.211:3128",
+      "ip": "188.226.141.211",
+      "port": "3128",
+      "country": "EU",
+      "last_checked": "2021-01-03 20:20:39",
+      "proxy_level": "anonymous",
+      "type": "http",
+      "speed": "9",
+      "support": {
+        "https": 0,
+        "get": 1,
+        "post": 1,
+        "cookies": 1,
+        "referer": 1,
+        "user_agent": 1,
+        "google": 0
+      }
     }
   ],
-  "count": 5
+  "count": 6
 }
