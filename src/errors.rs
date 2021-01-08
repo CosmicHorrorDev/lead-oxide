@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use crate::constants;
+use crate::{constants, types::NaiveResponse};
 
 use thiserror::Error;
-use ureq::Response;
 
 // TODO: look into verifying the country codes that are passed in
 #[derive(Error, Debug)]
@@ -18,6 +17,7 @@ pub enum ParamError {
 
 #[derive(Error, Debug)]
 pub enum ApiError {
+    // TODO: do all of these really need to have error in their name too? Check other libs
     #[error("Client Error ({code}): {resp}\n This should be prevented, please raise an issue")]
     ClientError { code: u16, resp: String },
 
@@ -39,31 +39,37 @@ pub enum ApiError {
 
     #[error("No matching proxies, consider broadening the parameters used")]
     NoProxyError,
+
+    #[error("The API returned an unexpected message. Consider raising an issue with the library")]
+    UnknownError,
 }
 
-impl From<Response> for ApiError {
-    fn from(resp: Response) -> Self {
-        let status = resp.status();
-        let resp_str = resp
-            .into_string()
-            .expect("Failed converting response to string");
-
-        if status >= 400 && status < 500 {
-            Self::ClientError {
-                code: status,
-                resp: resp_str,
+impl From<NaiveResponse> for ApiError {
+    fn from(resp: NaiveResponse) -> Self {
+        // Some known errors get returned with varied `status` codes so match on response text first
+        // then add context to unknown status codes
+        match Self::from(resp.text.clone()) {
+            Self::UnknownError => {
+                if resp.status >= 400 && resp.status < 500 {
+                    Self::ClientError {
+                        code: resp.status,
+                        resp: resp.text,
+                    }
+                } else if resp.status >= 500 && resp.status < 600 {
+                    Self::ServerError {
+                        code: resp.status,
+                        resp: resp.text,
+                    }
+                } else {
+                    unreachable!(
+                        r"Tried creating ApiError from valid response ({}). Please raise an issue
+ at {}.",
+                        resp.status,
+                        constants::REPO_URI
+                    );
+                }
             }
-        } else if status >= 500 && status < 600 {
-            Self::ServerError {
-                code: status,
-                resp: resp_str,
-            }
-        } else {
-            unreachable!(
-                "Tried creating ApiError from valid response ({}). Please raise an issue at {}.",
-                status,
-                constants::REPO_URI
-            );
+            err => err,
         }
     }
 }
@@ -83,13 +89,7 @@ impl From<String> for ApiError {
             RATE_LIMIT => Self::RateLimitError,
             DAILY_LIMIT => Self::DailyLimitError,
             NO_PROXY => Self::NoProxyError,
-            _ => {
-                unreachable!(
-                    "The API returned an unexpected message '{}'. Please raise an issue at {}",
-                    s,
-                    constants::REPO_URI
-                );
-            }
+            _ => Self::UnknownError,
         }
     }
 }

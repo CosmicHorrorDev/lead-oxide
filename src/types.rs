@@ -1,5 +1,30 @@
 use iso_country::Country;
 use serde::{Deserialize, Serialize};
+use ureq::Response;
+
+pub struct NaiveResponse {
+    pub status: u16,
+    pub text: String,
+}
+
+impl NaiveResponse {
+    pub fn new(status: u16, text: String) -> Self {
+        Self { status, text }
+    }
+
+    pub fn ok(&self) -> bool {
+        self.status >= 200 && self.status < 300
+    }
+}
+
+impl From<Response> for NaiveResponse {
+    fn from(resp: Response) -> Self {
+        let status = resp.status();
+        let text = resp.into_string().unwrap_or_default();
+
+        Self::new(status, text)
+    }
+}
 
 // TODO: this could be valid for the whole time now, so could remove the builder for it
 #[derive(Serialize, Clone, Debug, PartialEq)]

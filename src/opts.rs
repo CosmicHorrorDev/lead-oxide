@@ -14,6 +14,7 @@ pub struct OptsBuilder {
     api_key: Option<String>,
     level: Option<Level>,
     protocol: Option<Protocol>,
+    // TODO: use default here too
     countries: Option<Countries>,
     last_checked: Option<Duration>,
     port: Option<NonZeroU16>,
@@ -32,6 +33,7 @@ impl OptsBuilder {
         self
     }
 
+    // TODO: is there terminology used to define this?
     pub fn level(mut self, level: Level) -> Self {
         self.level = Some(level);
         self
@@ -92,6 +94,7 @@ impl OptsBuilder {
         self
     }
 
+    // TODO: move this error to only the values that could actually fail
     pub fn try_build(self) -> Result<Opts, ParamError> {
         Opts::try_from(self)
     }

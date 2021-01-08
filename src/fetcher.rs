@@ -9,6 +9,7 @@ use crate::{
     errors::ApiError,
     opts::Opts,
     proxy::{proxies_from_json, Proxy},
+    types::NaiveResponse,
 };
 
 #[derive(Clone, Debug)]
@@ -87,15 +88,12 @@ impl Fetcher {
     fn fetch(&self, request: &mut ureq::Request) -> Result<Vec<Proxy>, ApiError> {
         if cfg!(not(test)) {
             let resp = request.call();
+            let naive_resp = NaiveResponse::from(resp);
 
-            if resp.ok() {
-                let resp_str = resp
-                    .into_string()
-                    .expect("Failed converting response to string");
-
-                proxies_from_json(&resp_str).map_err(|_| ApiError::from(resp_str))
+            if naive_resp.ok() {
+                proxies_from_json(&naive_resp.text).map_err(|_| ApiError::from(naive_resp))
             } else {
-                Err(ApiError::from(resp))
+                Err(ApiError::from(naive_resp))
             }
         } else {
             use chrono::naive::NaiveDate;
