@@ -59,7 +59,7 @@ impl From<NaiveResponse> for ApiError {
                 } else {
                     unreachable!(
                         "Tried creating ApiError from valid response ({}). Please raise an issue \
-                    at {}.",
+                         at {}.",
                         status,
                         constants::REPO_URI
                     );
@@ -73,9 +73,10 @@ impl From<NaiveResponse> for ApiError {
 const INVALID_API_KEY: &str =
     "Invalid API. Get your API to make unlimited requests at http://pubproxy.com/#premium";
 const RATE_LIMIT: &str = "We have to temporarily stop you. You're requesting proxies a little too \
- fast (2+ requests per second). Get your API to remove this limit at http://pubproxy.com/#premium";
+                          fast (2+ requests per second). Get your API to remove this limit at
+                          http://pubproxy.com/#premium";
 const DAILY_LIMIT: &str = "You reached the maximum 50 requests for today. Get your API to make \
- unlimited requests at http://pubproxy.com/#premium";
+                           unlimited requests at http://pubproxy.com/#premium";
 const NO_PROXY: &str = "No proxy";
 
 impl From<String> for ApiError {
