@@ -1,9 +1,6 @@
-use std::{convert::TryFrom, num::NonZeroU16};
+use std::num::NonZeroU16;
 
-use crate::{
-    errors::ParamError,
-    types::{Countries, LastChecked, Level, Protocol, TimeToConnect},
-};
+use crate::types::{Countries, LastChecked, Level, Protocol, TimeToConnect};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
@@ -196,7 +193,7 @@ impl From<OptsBuilder> for Opts {
 mod tests {
     use super::*;
 
-    use std::time::Duration;
+    use std::{convert::TryFrom, time::Duration};
 
     use iso_country::Country;
 
