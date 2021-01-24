@@ -94,8 +94,8 @@ impl OptsBuilder {
     }
 
     // TODO: move this error to only the values that could actually fail
-    pub fn try_build(self) -> Result<Opts, ParamError> {
-        Opts::try_from(self)
+    pub fn build(self) -> Opts {
+        Opts::from(self)
     }
 }
 
@@ -163,11 +163,9 @@ impl Opts {
     }
 }
 
-impl TryFrom<OptsBuilder> for Opts {
-    type Error = ParamError;
-
-    fn try_from(builder: OptsBuilder) -> Result<Self, Self::Error> {
-        Ok(Self {
+impl From<OptsBuilder> for Opts {
+    fn from(builder: OptsBuilder) -> Self {
+        Self {
             api_key: builder.api_key.clone(),
             level: builder.level,
             protocol: builder.protocol,
@@ -190,7 +188,7 @@ impl TryFrom<OptsBuilder> for Opts {
                 None => Limit::Free,
             },
             format: Format::default(),
-        })
+        }
     }
 }
 
@@ -223,16 +221,13 @@ mod tests {
         check_equal_params(Opts::default(), &["format=json", "limit=5"])?;
         // Using a key will up the limit
         check_equal_params(
-            Opts::builder().api_key("<key>").try_build().unwrap(),
+            Opts::builder().api_key("<key>").build(),
             &["api=%3Ckey%3E", "format=json", "limit=20"],
         )?;
         // Empty countries list won't be included (api seems to work with an empty list, but I don't
         // want to rely on this behavior
         check_equal_params(
-            Opts::builder()
-                .countries(Countries::default())
-                .try_build()
-                .unwrap(),
+            Opts::builder().countries(Countries::default()).build(),
             &["format=json", "limit=5"],
         )?;
         // Kitchen sink
@@ -251,8 +246,7 @@ mod tests {
                 .post(false)
                 .referer(true)
                 .forwards_user_agent(false)
-                .try_build()
-                .unwrap(),
+                .build(),
             &[
                 // Automatic
                 "limit=20",
