@@ -128,9 +128,7 @@ impl Countries {
         // TODO: make sure this is documented. Mention that unknows are automatically filtered out
         // if any country is used in the allow or blocklist
         if let Country::Unspecified = country {
-            panic!(format!(
-                "This library doesn't allow `Unspecified` country in the allow or blocklist"
-            ));
+            panic!("This library doesn't allow `Unspecified` country in the allow or blocklist");
         }
 
         let push_country = |list: String, new_tag: Country| {

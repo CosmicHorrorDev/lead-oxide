@@ -56,9 +56,9 @@ impl From<NaiveResponse> for ApiError {
         // then add context to unknown status codes
         match Self::from(text.clone()) {
             Self::UnknownError => {
-                if status >= 400 && status < 500 {
+                if (400..500).contains(&status) {
                     Self::ClientError { status, text }
-                } else if status >= 500 && status < 600 {
+                } else if (500..600).contains(&status) {
                     Self::ServerError { status, text }
                 } else {
                     unreachable!(
