@@ -24,12 +24,11 @@ pub struct OptsBuilder {
 }
 
 impl OptsBuilder {
-    pub fn api_key(mut self, api_key: &str) -> Self {
-        self.api_key = Some(api_key.to_string());
+    pub fn api_key(mut self, api_key: String) -> Self {
+        self.api_key = Some(api_key);
         self
     }
 
-    // TODO: is there terminology used to define this?
     pub fn level(mut self, level: Level) -> Self {
         self.level = Some(level);
         self
@@ -90,7 +89,6 @@ impl OptsBuilder {
         self
     }
 
-    // TODO: move this error to only the values that could actually fail
     pub fn build(self) -> Opts {
         Opts::from(self)
     }
@@ -129,7 +127,7 @@ pub struct Opts {
     level: Option<Level>,
     #[serde(rename = "type")]
     protocol: Option<Protocol>,
-    // An enpty country list is essentially `None`
+    // An empty country list is essentially `None`
     #[serde(flatten, skip_serializing_if = "Countries::is_empty")]
     countries: Countries,
     #[serde(rename = "last_check")]
@@ -163,7 +161,11 @@ impl Opts {
 impl From<OptsBuilder> for Opts {
     fn from(builder: OptsBuilder) -> Self {
         Self {
-            api_key: builder.api_key.clone(),
+            limit: match builder.api_key {
+                Some(_) => Limit::Premium,
+                None => Limit::Free,
+            },
+            api_key: builder.api_key,
             level: builder.level,
             protocol: builder.protocol,
             countries: builder.countries.unwrap_or_default(),
@@ -180,10 +182,6 @@ impl From<OptsBuilder> for Opts {
             post: builder.post,
             referer: builder.referer,
             forwards_user_agent: builder.forwards_user_agent,
-            limit: match builder.api_key {
-                Some(_) => Limit::Premium,
-                None => Limit::Free,
-            },
             format: Format::default(),
         }
     }
@@ -199,7 +197,7 @@ mod tests {
 
     #[test]
     fn url_serialization() -> Result<(), serde_urlencoded::ser::Error> {
-        let check_equal_params = |opts, expected: &[&str]| {
+        let check_equivalent_params = |opts, expected: &[&str]| {
             // Convert `opts` to a url and sort the values
             let url = serde_urlencoded::to_string(&opts)?;
             let mut params: Vec<_> = url.split('&').map(String::from).collect();
@@ -215,22 +213,22 @@ mod tests {
         };
 
         // Base `Opts`
-        check_equal_params(Opts::default(), &["format=json", "limit=5"])?;
+        check_equivalent_params(Opts::default(), &["format=json", "limit=5"])?;
         // Using a key will up the limit
-        check_equal_params(
-            Opts::builder().api_key("<key>").build(),
+        check_equivalent_params(
+            Opts::builder().api_key("<key>".to_string()).build(),
             &["api=%3Ckey%3E", "format=json", "limit=20"],
         )?;
         // Empty countries list won't be included (api seems to work with an empty list, but I don't
-        // want to rely on this behavior
-        check_equal_params(
+        // want to rely on this behavior)
+        check_equivalent_params(
             Opts::builder().countries(Countries::default()).build(),
             &["format=json", "limit=5"],
         )?;
         // Kitchen sink
-        check_equal_params(
+        check_equivalent_params(
             Opts::builder()
-                .api_key("<key>")
+                .api_key("<key>".to_string())
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
                 .countries(Countries::block().countries(&[Country::CH, Country::ES]))

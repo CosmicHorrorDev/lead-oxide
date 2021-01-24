@@ -1,6 +1,9 @@
 use std::{net::SocketAddrV4, time::Duration};
 
-use crate::types::{Level, Protocol};
+use crate::{
+    constants::REPO_URI,
+    types::{Level, Protocol},
+};
 
 use chrono::NaiveDateTime;
 use iso_country::Country;
@@ -62,14 +65,20 @@ pub struct Proxy {
 
 impl From<RawProxy> for Proxy {
     fn from(raw: RawProxy) -> Self {
-        // TODO: have this list the lib repo
         let last_checked = NaiveDateTime::parse_from_str(&raw.last_checked, "%F %T")
-            .expect("The API returned an invalid time");
+            .unwrap_or_else(|_| {
+                panic!(
+                    "The API returned an invalid time. Please raise an issue to address this at {}",
+                    REPO_URI
+                )
+            });
 
-        let secs_to_connect = raw
-            .time_to_connect
-            .parse()
-            .expect("The API returned an invalid int");
+        let secs_to_connect = raw.time_to_connect.parse().unwrap_or_else(|_| {
+            panic!(
+                "The API returned an invalid int. Please raise an issue to address this at {}",
+                REPO_URI
+            )
+        });
         let time_to_connect = Duration::from_secs(secs_to_connect);
 
         Self {
@@ -91,7 +100,8 @@ pub fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
         .into_iter()
         .map(Proxy::from)
         // Just to play it safe we filter out any results with an incorrect country field. We could
-        // be smarter and only use this in the presence of a blocklist if this causes issues.
+        // be smarter and only use this in the presence of a blocklist if this causes issues. Just
+        // to note this is typically less than 10% or responses.
         .filter(|&Proxy { country, .. }| country != Country::Unspecified)
         .collect())
 }

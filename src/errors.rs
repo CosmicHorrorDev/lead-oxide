@@ -1,51 +1,47 @@
-use std::time::Duration;
+use std::fmt;
 
 use crate::{constants, types::NaiveResponse};
 
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum ParamError {
+pub enum ParamError<T: PartialEq + fmt::Debug> {
     #[error("'{value:?}' is outside bounds: {bounds:?}")]
-    OutOfBounds {
-        bounds: (Duration, Duration),
-        value: Duration,
-    },
+    OutOfBounds { bounds: (T, T), value: T },
 }
 
-impl ParamError {
-    pub fn out_of_bounds(value: Duration, bounds: (Duration, Duration)) -> Self {
+impl<T: PartialEq + fmt::Debug> ParamError<T> {
+    pub fn out_of_bounds(value: T, bounds: (T, T)) -> Self {
         Self::OutOfBounds { value, bounds }
     }
 }
 
 #[derive(Error, Debug)]
 pub enum ApiError {
-    // TODO: do all of these really need to have error in their name too? Check other libs
     #[error("Client Error ({status}): {text}\n This should be prevented, please raise an issue")]
-    ClientError { status: u16, text: String },
+    Client { status: u16, text: String },
 
     #[error("Internal Server Error ({status}): {text}")]
-    ServerError { status: u16, text: String },
+    Server { status: u16, text: String },
 
     #[error("Invalid API key, make sure your key is valid")]
-    ApiKeyError,
+    ApiKey,
 
     // TODO: mention fetchers from multiple sessions
     #[error(
         "You have exceeded the rate limit. This could be due to multiple programs using the API. \
  If this is not the case then sorry but the API hates you, consider raising an issue."
     )]
-    RateLimitError,
+    RateLimit,
 
     #[error("You have exhausted the daily limit of proxies.")]
-    DailyLimitError,
+    DailyLimit,
 
     #[error("No matching proxies, consider broadening the parameters used")]
-    NoProxyError,
+    NoProxy,
 
     #[error("The API returned an unexpected message. Consider raising an issue with the library")]
-    UnknownError,
+    Unknown,
 }
 
 impl From<NaiveResponse> for ApiError {
@@ -55,11 +51,11 @@ impl From<NaiveResponse> for ApiError {
         // Some known errors get returned with varied `status` codes so match on response text first
         // then add context to unknown status codes
         match Self::from(text.clone()) {
-            Self::UnknownError => {
+            Self::Unknown => {
                 if (400..500).contains(&status) {
-                    Self::ClientError { status, text }
+                    Self::Client { status, text }
                 } else if (500..600).contains(&status) {
-                    Self::ServerError { status, text }
+                    Self::Server { status, text }
                 } else {
                     unreachable!(
                         "Tried creating ApiError from valid response ({}). Please raise an issue \
@@ -86,11 +82,11 @@ const NO_PROXY: &str = "No proxy";
 impl From<String> for ApiError {
     fn from(s: String) -> Self {
         match s.as_str() {
-            INVALID_API_KEY => Self::ApiKeyError,
-            RATE_LIMIT => Self::RateLimitError,
-            DAILY_LIMIT => Self::DailyLimitError,
-            NO_PROXY => Self::NoProxyError,
-            _ => Self::UnknownError,
+            INVALID_API_KEY => Self::ApiKey,
+            RATE_LIMIT => Self::RateLimit,
+            DAILY_LIMIT => Self::DailyLimit,
+            NO_PROXY => Self::NoProxy,
+            _ => Self::Unknown,
         }
     }
 }

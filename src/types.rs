@@ -1,21 +1,37 @@
 use crate::errors::ParamError;
 
-use std::{convert::TryFrom, time::Duration};
+use std::{convert::TryFrom, fmt, time::Duration};
 
 use iso_country::Country;
 use serde::{Deserialize, Serialize};
 use ureq::Response;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
-struct BoundedVal<T: PartialEq> {
+struct BoundedVal<T>
+where
+    T: fmt::Debug + Eq + PartialOrd,
+{
     #[serde(flatten)]
     pub val: T,
     #[serde(skip_serializing)]
     pub bounds: (T, T),
 }
 
-impl<T: PartialEq> BoundedVal<T> {
-    pub fn new(val: T, bounds: (T, T)) -> Self {
+impl<T> BoundedVal<T>
+where
+    T: fmt::Debug + Eq + PartialOrd,
+{
+    pub fn new(val: T, bounds: (T, T)) -> Result<Self, ParamError<T>> {
+        debug_assert!(bounds.0 <= bounds.1);
+
+        if val >= bounds.0 && val <= bounds.1 {
+            Ok(Self::new_unchecked(val, bounds))
+        } else {
+            Err(ParamError::out_of_bounds(val, bounds))
+        }
+    }
+
+    pub fn new_unchecked(val: T, bounds: (T, T)) -> Self {
         Self { val, bounds }
     }
 }
@@ -29,13 +45,15 @@ macro_rules! bounded_val {
         }
 
         impl $name {
-            // Bounds go from one minute to an hour
             const BOUNDS: ($type, $type) = $bounds;
 
-            fn new(val: $type) -> Self {
-                Self {
-                    inner: BoundedVal::new(val, Self::BOUNDS),
-                }
+            fn new(val: $type) -> Result<Self, ParamError<$type>> {
+                let inner = BoundedVal::new(val, Self::BOUNDS)?;
+                Ok(Self { inner })
+            }
+
+            pub fn bounds(&self) -> ($type, $type) {
+                self.inner.bounds
             }
 
             pub fn value(&self) -> $type {
@@ -44,24 +62,19 @@ macro_rules! bounded_val {
         }
 
         impl TryFrom<$type> for $name {
-            type Error = ParamError;
+            type Error = ParamError<$type>;
 
             fn try_from(duration: $type) -> Result<Self, Self::Error> {
-                if duration >= Self::BOUNDS.0 && duration <= Self::BOUNDS.1 {
-                    Ok(Self::new(duration))
-                } else {
-                    Err(Self::Error::OutOfBounds {
-                        bounds: Self::BOUNDS,
-                        value: duration,
-                    })
-                }
+                Self::new(duration)
             }
         }
     };
 }
 
+// One minute to an hour
 const LAST_CHECKED_BOUNDS: (Duration, Duration) =
     (Duration::from_secs(60), Duration::from_secs(60 * 60));
+// One second to a minute
 const TIME_TO_CONNECT_BOUNDS: (Duration, Duration) =
     (Duration::from_secs(1), Duration::from_secs(60));
 bounded_val! {LastChecked, Duration, LAST_CHECKED_BOUNDS}
@@ -78,7 +91,7 @@ impl NaiveResponse {
     }
 
     pub fn ok(&self) -> bool {
-        self.status >= 200 && self.status < 300
+        (200..300).contains(&self.status)
     }
 }
 
@@ -91,7 +104,6 @@ impl From<Response> for NaiveResponse {
     }
 }
 
-// TODO: this could be valid for the whole time now, so could remove the builder for it
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum Countries {
     #[serde(rename = "country")]
@@ -125,7 +137,7 @@ impl Countries {
     }
 
     pub fn country(self, country: Country) -> Self {
-        // TODO: make sure this is documented. Mention that unknows are automatically filtered out
+        // TODO: make sure this is documented. Mention that unknowns are automatically filtered out
         // if any country is used in the allow or blocklist
         if let Country::Unspecified = country {
             panic!("This library doesn't allow `Unspecified` country in the allow or blocklist");
@@ -193,13 +205,13 @@ mod tests {
             ParamError::out_of_bounds(just_over_minute, TIME_TO_CONNECT_BOUNDS)
         );
 
-        let bounds_err = LastChecked::try_from(Duration::from_secs(0)).unwrap_err();
+        let bounds_err = LastChecked::try_from(zero_seconds).unwrap_err();
         assert_eq!(
             bounds_err,
             ParamError::out_of_bounds(zero_seconds, LAST_CHECKED_BOUNDS)
         );
 
-        let bounds_err = LastChecked::try_from(Duration::from_secs(60 * 60 + 1)).unwrap_err();
+        let bounds_err = LastChecked::try_from(just_over_hour).unwrap_err();
         assert_eq!(
             bounds_err,
             ParamError::out_of_bounds(just_over_hour, LAST_CHECKED_BOUNDS)

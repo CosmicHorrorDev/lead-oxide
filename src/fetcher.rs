@@ -176,7 +176,7 @@ mod tests {
 
         #[test]
         fn api_key() {
-            let premium_opts = Opts::builder().api_key("<key>").try_build().unwrap();
+            let premium_opts = Opts::builder().api_key("<key>".to_string()).build();
             let mut fetcher = Session::new().fetcher_with_opts(premium_opts);
 
             let single = fetcher.try_get(1).unwrap();
@@ -217,14 +217,13 @@ mod tests {
             let session = Session::new();
             let mut default = session.fetcher();
             let mut premium =
-                session.fetcher_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
+                session.fetcher_with_opts(Opts::builder().api_key("<key>".to_string()).build());
             let mut custom = session.fetcher_with_opts(
                 Opts::builder()
                     .level(Level::Elite)
                     .cookies(true)
                     .countries(Countries::allow().country(Country::CA))
-                    .try_build()
-                    .unwrap(),
+                    .build(),
             );
 
             let single = default.try_get(1).unwrap();
@@ -309,7 +308,7 @@ mod tests {
                     let mut keyless2 = session.fetcher();
                     // TODO: this option is used several times. Reuse somehow?
                     let mut premium = session
-                        .fetcher_with_opts(Opts::builder().api_key("<key>").try_build().unwrap());
+                        .fetcher_with_opts(Opts::builder().api_key("<key>".to_string()).build());
 
                     let _ = keyless1.try_get(2 * FREE_LIMIT);
                     // Even while the keyless ones would be delayed, the premium is not
