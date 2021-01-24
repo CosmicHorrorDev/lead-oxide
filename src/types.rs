@@ -9,7 +9,7 @@ use ureq::Response;
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 struct BoundedVal<T>
 where
-    T: fmt::Debug + Eq + PartialOrd,
+    T: fmt::Debug + PartialEq + PartialOrd,
 {
     #[serde(flatten)]
     pub val: T,
@@ -19,7 +19,7 @@ where
 
 impl<T> BoundedVal<T>
 where
-    T: fmt::Debug + Eq + PartialOrd,
+    T: fmt::Debug + PartialEq + PartialOrd,
 {
     pub fn new(val: T, bounds: (T, T)) -> Result<Self, ParamError<T>> {
         debug_assert!(bounds.0 <= bounds.1);
@@ -47,7 +47,7 @@ macro_rules! bounded_val {
         impl $name {
             const BOUNDS: ($type, $type) = $bounds;
 
-            fn new(val: $type) -> Result<Self, ParamError<$type>> {
+            pub fn new(val: $type) -> Result<Self, ParamError<$type>> {
                 let inner = BoundedVal::new(val, Self::BOUNDS)?;
                 Ok(Self { inner })
             }
@@ -64,8 +64,8 @@ macro_rules! bounded_val {
         impl TryFrom<$type> for $name {
             type Error = ParamError<$type>;
 
-            fn try_from(duration: $type) -> Result<Self, Self::Error> {
-                Self::new(duration)
+            fn try_from(val: $type) -> Result<Self, Self::Error> {
+                Self::new(val)
             }
         }
     };
