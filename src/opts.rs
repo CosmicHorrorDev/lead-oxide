@@ -1,8 +1,8 @@
-use std::{convert::TryFrom, num::NonZeroU16, time::Duration};
+use std::{convert::TryFrom, num::NonZeroU16};
 
 use crate::{
     errors::ParamError,
-    types::{Countries, Level, Protocol},
+    types::{Countries, LastChecked, Level, Protocol, TimeToConnect},
 };
 
 use serde::Serialize;
@@ -14,11 +14,10 @@ pub struct OptsBuilder {
     api_key: Option<String>,
     level: Option<Level>,
     protocol: Option<Protocol>,
-    // TODO: use default here too
     countries: Option<Countries>,
-    last_checked: Option<Duration>,
+    last_checked: Option<LastChecked>,
     port: Option<NonZeroU16>,
-    time_to_connect: Option<Duration>,
+    time_to_connect: Option<TimeToConnect>,
     cookies: Option<bool>,
     connects_to_google: Option<bool>,
     https: Option<bool>,
@@ -49,7 +48,7 @@ impl OptsBuilder {
         self
     }
 
-    pub fn last_checked(mut self, last_checked: Duration) -> Self {
+    pub fn last_checked(mut self, last_checked: LastChecked) -> Self {
         self.last_checked = Some(last_checked);
         self
     }
@@ -59,7 +58,7 @@ impl OptsBuilder {
         self
     }
 
-    pub fn time_to_connect(mut self, time_to_connect: Duration) -> Self {
+    pub fn time_to_connect(mut self, time_to_connect: TimeToConnect) -> Self {
         self.time_to_connect = Some(time_to_connect);
         self
     }
@@ -168,41 +167,18 @@ impl TryFrom<OptsBuilder> for Opts {
     type Error = ParamError;
 
     fn try_from(builder: OptsBuilder) -> Result<Self, Self::Error> {
-        // TODO: can the newtype pattern be used here to make the bounds checking nicer?
-        let bounds_check = |val, param_name, bounds: (Duration, Duration)| {
-            match val {
-                // Check that duration is within bounds if it exists
-                Some(duration) if duration < bounds.0 || duration > bounds.1 => {
-                    Err(Self::Error::OutOfBounds {
-                        param: String::from(param_name),
-                        bounds,
-                        value: duration,
-                    })
-                }
-                _ => Ok(()),
-            }
-        };
-
-        bounds_check(
-            builder.last_checked,
-            "last_checked",
-            (Duration::from_secs(60), Duration::from_secs(60 * 60)),
-        )?;
-
-        bounds_check(
-            builder.time_to_connect,
-            "time_to_connect",
-            (Duration::from_secs(1), Duration::from_secs(60)),
-        )?;
-
         Ok(Self {
             api_key: builder.api_key.clone(),
             level: builder.level,
             protocol: builder.protocol,
             countries: builder.countries.unwrap_or_default(),
-            last_checked: builder.last_checked.map(|duration| duration.as_secs() / 60),
+            last_checked: builder
+                .last_checked
+                .map(|last_checked| last_checked.value().as_secs() / 60),
             port: builder.port,
-            time_to_connect: builder.time_to_connect.map(|duration| duration.as_secs()),
+            time_to_connect: builder
+                .time_to_connect
+                .map(|time_to_connect| time_to_connect.value().as_secs()),
             cookies: builder.cookies,
             connects_to_google: builder.connects_to_google,
             https: builder.https,
@@ -222,31 +198,9 @@ impl TryFrom<OptsBuilder> for Opts {
 mod tests {
     use super::*;
 
+    use std::time::Duration;
+
     use iso_country::Country;
-
-    #[test]
-    fn bounds_checking() {
-        // Check the bounds
-        let bad_opts = Opts::builder()
-            .time_to_connect(Duration::from_secs(0))
-            .try_build();
-        assert!(bad_opts.is_err());
-
-        let bad_opts = Opts::builder()
-            .time_to_connect(Duration::from_secs(61))
-            .try_build();
-        assert!(bad_opts.is_err());
-
-        let bad_opts = Opts::builder()
-            .last_checked(Duration::from_secs(0))
-            .try_build();
-        assert!(bad_opts.is_err());
-
-        let bad_opts = Opts::builder()
-            .last_checked(Duration::from_secs(60 * 60 + 1))
-            .try_build();
-        assert!(bad_opts.is_err());
-    }
 
     #[test]
     fn url_serialization() -> Result<(), serde_urlencoded::ser::Error> {
@@ -288,8 +242,8 @@ mod tests {
                 .level(Level::Elite)
                 .protocol(Protocol::Socks4)
                 .countries(Countries::block().countries(&[Country::CH, Country::ES]))
-                .last_checked(Duration::from_secs(60 * 10))
-                .time_to_connect(Duration::from_secs(10))
+                .last_checked(LastChecked::try_from(Duration::from_secs(60 * 10)).unwrap())
+                .time_to_connect(TimeToConnect::try_from(Duration::from_secs(10)).unwrap())
                 .port(NonZeroU16::new(8080).unwrap())
                 .cookies(true)
                 .connects_to_google(false)

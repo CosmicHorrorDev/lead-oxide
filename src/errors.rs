@@ -4,15 +4,19 @@ use crate::{constants, types::NaiveResponse};
 
 use thiserror::Error;
 
-// TODO: look into verifying the country codes that are passed in
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ParamError {
-    #[error("'{value:?}' is outside param '{param:?}' bounds: {bounds:?}")]
+    #[error("'{value:?}' is outside bounds: {bounds:?}")]
     OutOfBounds {
-        param: String,
         bounds: (Duration, Duration),
         value: Duration,
     },
+}
+
+impl ParamError {
+    pub fn out_of_bounds(value: Duration, bounds: (Duration, Duration)) -> Self {
+        Self::OutOfBounds { value, bounds }
+    }
 }
 
 #[derive(Error, Debug)]
