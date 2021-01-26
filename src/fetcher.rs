@@ -132,6 +132,8 @@ impl Fetcher {
     }
 }
 
+// TODO: store api uri in here so that it gets passed to the `Fetcher` and can be easily mocked for
+// testing
 #[derive(Debug)]
 pub struct Session {
     last_fetched: Arc<Mutex<Instant>>,
