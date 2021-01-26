@@ -13,8 +13,6 @@ where
 {
     #[serde(flatten)]
     pub val: T,
-    #[serde(skip_serializing)]
-    pub bounds: (T, T),
 }
 
 impl<T> BoundedVal<T>
@@ -25,14 +23,10 @@ where
         debug_assert!(bounds.0 <= bounds.1);
 
         if val >= bounds.0 && val <= bounds.1 {
-            Ok(Self::new_unchecked(val, bounds))
+            Ok(Self { val })
         } else {
             Err(ParamError::out_of_bounds(val, bounds))
         }
-    }
-
-    pub fn new_unchecked(val: T, bounds: (T, T)) -> Self {
-        Self { val, bounds }
     }
 }
 
@@ -45,15 +39,11 @@ macro_rules! bounded_val {
         }
 
         impl $name {
-            const BOUNDS: ($type, $type) = $bounds;
+            pub const BOUNDS: ($type, $type) = $bounds;
 
             pub fn new(val: $type) -> Result<Self, ParamError<$type>> {
                 let inner = BoundedVal::new(val, Self::BOUNDS)?;
                 Ok(Self { inner })
-            }
-
-            pub fn bounds(&self) -> ($type, $type) {
-                self.inner.bounds
             }
 
             pub fn value(&self) -> $type {
@@ -187,34 +177,50 @@ mod tests {
 
     use std::time::Duration;
 
-    #[test]
-    fn bounds_checking() {
-        let zero_seconds = Duration::from_secs(0);
-        let just_over_minute = Duration::from_secs(61);
-        let just_over_hour = Duration::from_secs(60 * 60 + 1);
+    mod bounded_vals {
+        use super::*;
 
-        let bounds_err = TimeToConnect::try_from(zero_seconds).unwrap_err();
-        assert_eq!(
-            bounds_err,
-            ParamError::out_of_bounds(zero_seconds, TIME_TO_CONNECT_BOUNDS)
-        );
+        #[test]
+        fn bounds_checking() {
+            let zero_seconds = Duration::from_secs(0);
+            let just_over_minute = Duration::from_secs(61);
+            let just_over_hour = Duration::from_secs(60 * 60 + 1);
 
-        let bounds_err = TimeToConnect::try_from(just_over_minute).unwrap_err();
-        assert_eq!(
-            bounds_err,
-            ParamError::out_of_bounds(just_over_minute, TIME_TO_CONNECT_BOUNDS)
-        );
+            let bounds_err = TimeToConnect::try_from(zero_seconds).unwrap_err();
+            assert_eq!(
+                bounds_err,
+                ParamError::out_of_bounds(zero_seconds, TIME_TO_CONNECT_BOUNDS)
+            );
 
-        let bounds_err = LastChecked::try_from(zero_seconds).unwrap_err();
-        assert_eq!(
-            bounds_err,
-            ParamError::out_of_bounds(zero_seconds, LAST_CHECKED_BOUNDS)
-        );
+            let bounds_err = TimeToConnect::try_from(just_over_minute).unwrap_err();
+            assert_eq!(
+                bounds_err,
+                ParamError::out_of_bounds(just_over_minute, TIME_TO_CONNECT_BOUNDS)
+            );
 
-        let bounds_err = LastChecked::try_from(just_over_hour).unwrap_err();
-        assert_eq!(
-            bounds_err,
-            ParamError::out_of_bounds(just_over_hour, LAST_CHECKED_BOUNDS)
-        );
+            let bounds_err = LastChecked::try_from(zero_seconds).unwrap_err();
+            assert_eq!(
+                bounds_err,
+                ParamError::out_of_bounds(zero_seconds, LAST_CHECKED_BOUNDS)
+            );
+
+            let bounds_err = LastChecked::try_from(just_over_hour).unwrap_err();
+            assert_eq!(
+                bounds_err,
+                ParamError::out_of_bounds(just_over_hour, LAST_CHECKED_BOUNDS)
+            );
+        }
+
+        #[test]
+        fn it_works() {
+            let half_minute = Duration::from_secs(30);
+            let half_hour = Duration::from_secs(30 * 60);
+
+            let valid_time_to_connect = TimeToConnect::try_from(half_minute).unwrap();
+            assert_eq!(valid_time_to_connect.value(), half_minute);
+
+            let valid_last_checked = LastChecked::try_from(half_hour).unwrap();
+            assert_eq!(valid_last_checked.value(), half_hour);
+        }
     }
 }
