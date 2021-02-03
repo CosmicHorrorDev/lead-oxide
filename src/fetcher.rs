@@ -19,7 +19,6 @@ lazy_static! {
 
 #[derive(Clone, Debug)]
 pub struct Fetcher {
-    last_fetched: Arc<Mutex<Instant>>,
     opts: Opts,
     proxies: Vec<Proxy>,
 }
@@ -27,7 +26,6 @@ pub struct Fetcher {
 impl Fetcher {
     pub fn new(opts: Opts) -> Self {
         Self {
-            last_fetched: Arc::clone(&LAST_FETCHED),
             opts,
             proxies: Vec::new(),
         }
@@ -51,7 +49,7 @@ impl Fetcher {
             } else {
                 // If we don't have an api key then we need to coordinate delays to ensure we don't
                 // do more than one request per `constants::DELAY`
-                let mut last_fetched = match self.last_fetched.lock() {
+                let mut last_fetched = match LAST_FETCHED.lock() {
                     Ok(last_fetched) => last_fetched,
                     Err(err) => {
                         // If the lock was poisoned then play it safe and reset the timer
