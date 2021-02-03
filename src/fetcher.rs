@@ -12,6 +12,11 @@ use crate::{
     types::NaiveResponse,
 };
 
+lazy_static! {
+    static ref LAST_FETCHED: Arc<Mutex<Instant>> =
+        Arc::new(Mutex::new(Instant::now() - constants::DELAY));
+}
+
 #[derive(Clone, Debug)]
 pub struct Fetcher {
     last_fetched: Arc<Mutex<Instant>>,
@@ -20,9 +25,9 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
-    fn new(last_fetched: Arc<Mutex<Instant>>, opts: Opts) -> Self {
+    pub fn new(opts: Opts) -> Self {
         Self {
-            last_fetched,
+            last_fetched: Arc::clone(&LAST_FETCHED),
             opts,
             proxies: Vec::new(),
         }
@@ -132,33 +137,9 @@ impl Fetcher {
     }
 }
 
-// TODO: store api uri in here so that it gets passed to the `Fetcher` and can be easily mocked for
-// testing
-#[derive(Debug)]
-pub struct Session {
-    last_fetched: Arc<Mutex<Instant>>,
-}
-
-impl Session {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn fetcher(&self) -> Fetcher {
-        self.fetcher_with_opts(Opts::default())
-    }
-
-    pub fn fetcher_with_opts(&self, opts: Opts) -> Fetcher {
-        Fetcher::new(self.last_fetched.clone(), opts)
-    }
-}
-
-impl Default for Session {
+impl Default for Fetcher {
     fn default() -> Self {
-        Self {
-            // Start far enough back to avoid delay
-            last_fetched: Arc::new(Mutex::new(Instant::now() - constants::DELAY)),
-        }
+        Self::new(Opts::default())
     }
 }
 
@@ -178,8 +159,7 @@ mod tests {
 
         #[test]
         fn api_key() {
-            let premium_opts = Opts::builder().api_key("<key>".to_string()).build();
-            let mut fetcher = Session::new().fetcher_with_opts(premium_opts);
+            let mut fetcher = Fetcher::new(Opts::builder().api_key("<key>".to_string()).build());
 
             let single = fetcher.try_get(1).unwrap();
             let triple = fetcher.try_get(3).unwrap();
@@ -192,7 +172,7 @@ mod tests {
 
         #[test]
         fn keyless() {
-            let mut fetcher = Session::new().fetcher();
+            let mut fetcher = Fetcher::default();
 
             let single = fetcher.try_get(1).unwrap();
             let triple = fetcher.try_get(3).unwrap();
@@ -207,7 +187,7 @@ mod tests {
         fn multiple_requests() {
             // Multiple requests can be done with a single method call
             for i in 0..=2 * FREE_LIMIT {
-                let mut fetcher = Session::new().fetcher();
+                let mut fetcher = Fetcher::default();
                 let proxies = fetcher.try_get(i).unwrap();
                 assert_eq!(proxies.len(), i);
             }
@@ -216,11 +196,9 @@ mod tests {
         #[test]
         fn multiple_fetchers() {
             // Each fetcher should be independent
-            let session = Session::new();
-            let mut default = session.fetcher();
-            let mut premium =
-                session.fetcher_with_opts(Opts::builder().api_key("<key>".to_string()).build());
-            let mut custom = session.fetcher_with_opts(
+            let mut default = Fetcher::default();
+            let mut premium = Fetcher::new(Opts::builder().api_key("<key>".to_string()).build());
+            let mut custom = Fetcher::new(
                 Opts::builder()
                     .level(Level::Elite)
                     .cookies(true)
@@ -247,6 +225,12 @@ mod tests {
 
         const TEN_MILLISEC: Duration = Duration::from_millis(10);
 
+        // TODO: do this with a fixture
+        fn reset_last_fetched() {
+            let mut last_fetched = LAST_FETCHED.lock().unwrap();
+            *last_fetched = Instant::now() - constants::DELAY;
+        }
+
         // Helper function for ensuring runtime of a `FnOnce`
         fn time_it<F, T>(f: F, (expected, delta): (Duration, Duration)) -> T
         where
@@ -271,7 +255,8 @@ mod tests {
             // Requesting the first `FREE_LIMIT` is done in one call
             let mut fetcher = time_it(
                 || {
-                    let mut fetcher = Session::new().fetcher();
+                    reset_last_fetched();
+                    let mut fetcher = Fetcher::default();
                     let _ = fetcher.try_get(FREE_LIMIT);
                     fetcher
                 },
@@ -305,12 +290,13 @@ mod tests {
             // Fulfilling 4 full requests should delay thrice
             time_it(
                 || {
-                    let session = Session::new();
-                    let mut keyless1 = session.fetcher();
-                    let mut keyless2 = session.fetcher();
+                    reset_last_fetched();
+
+                    let mut keyless1 = Fetcher::default();
+                    let mut keyless2 = Fetcher::default();
                     // TODO: this option is used several times. Reuse somehow?
-                    let mut premium = session
-                        .fetcher_with_opts(Opts::builder().api_key("<key>".to_string()).build());
+                    let mut premium =
+                        Fetcher::new(Opts::builder().api_key("<key>".to_string()).build());
 
                     let _ = keyless1.try_get(2 * FREE_LIMIT);
                     // Even while the keyless ones would be delayed, the premium is not
@@ -327,9 +313,10 @@ mod tests {
             // Multiple fetchers should still have the delays coordinated
             let (mut fetcher1, mut fetcher2) = time_it(
                 || {
-                    let session = Session::new();
-                    let mut fetcher1 = session.fetcher();
-                    let mut fetcher2 = session.fetcher();
+                    reset_last_fetched();
+
+                    let mut fetcher1 = Fetcher::default();
+                    let mut fetcher2 = Fetcher::default();
 
                     let _ = fetcher1.try_get(1);
                     let _ = fetcher2.try_get(1);
@@ -358,9 +345,10 @@ mod tests {
             // Multiple fetchers should still have the delays coordinated across threads
             time_it(
                 || {
-                    let session = Session::new();
-                    let mut fetcher1 = session.fetcher();
-                    let mut fetcher2 = session.fetcher();
+                    reset_last_fetched();
+
+                    let mut fetcher1 = Fetcher::default();
+                    let mut fetcher2 = Fetcher::default();
 
                     let handle1 = thread::spawn(move || {
                         let _ = fetcher1.try_get(1);
