@@ -205,7 +205,7 @@ mod tests {
 
             // Sort the `expected` values
             let mut expected = expected.to_vec();
-            expected.sort();
+            expected.sort_unstable();
 
             assert_eq!(params, expected);
 
