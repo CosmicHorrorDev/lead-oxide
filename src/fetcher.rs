@@ -143,6 +143,8 @@ impl Default for Fetcher {
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use super::*;
 
     // XXX: need to handle clearing the env var key once that's added in
@@ -150,12 +152,13 @@ mod tests {
     const PREMIUM_LIMIT: usize = 20;
 
     mod functionality {
+        use iso_country::Country;
+
         use super::*;
         use crate::types::{Countries, Level};
 
-        use iso_country::Country;
-
         #[test]
+        #[serial]
         fn api_key() {
             let mut fetcher = Fetcher::new(Opts::builder().api_key("<key>".to_string()).build());
 
@@ -169,6 +172,7 @@ mod tests {
         }
 
         #[test]
+        #[serial]
         fn keyless() {
             let mut fetcher = Fetcher::default();
 
@@ -182,6 +186,7 @@ mod tests {
         }
 
         #[test]
+        #[serial]
         fn multiple_requests() {
             // Multiple requests can be done with a single method call
             for i in 0..=2 * FREE_LIMIT {
@@ -192,6 +197,7 @@ mod tests {
         }
 
         #[test]
+        #[serial]
         fn multiple_fetchers() {
             // Each fetcher should be independent
             let mut default = Fetcher::default();
@@ -217,9 +223,9 @@ mod tests {
     }
 
     mod delays {
-        use super::*;
-
         use std::time::Duration;
+
+        use super::*;
 
         const TEN_MILLISEC: Duration = Duration::from_millis(10);
 
@@ -249,6 +255,7 @@ mod tests {
         }
 
         #[test]
+        #[serial]
         fn single_fetcher() {
             // Requesting the first `FREE_LIMIT` is done in one call
             let mut fetcher = time_it(
@@ -284,6 +291,7 @@ mod tests {
         }
 
         #[test]
+        #[serial]
         fn multiple_delays() {
             // Fulfilling 4 full requests should delay thrice
             time_it(
@@ -307,6 +315,7 @@ mod tests {
         }
 
         #[test]
+        #[serial]
         fn multiple_fetchers() {
             // Multiple fetchers should still have the delays coordinated
             let (mut fetcher1, mut fetcher2) = time_it(
@@ -339,7 +348,8 @@ mod tests {
         }
 
         #[test]
-        fn mutliple_threads() {
+        #[serial]
+        fn multiple_threads() {
             // Multiple fetchers should still have the delays coordinated across threads
             time_it(
                 || {
