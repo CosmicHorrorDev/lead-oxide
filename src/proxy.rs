@@ -1,3 +1,6 @@
+//! [`Proxy`][Proxy]s represent information about the proxies returned by
+//! [`Fetcher`][crate::fetcher::Fetcher].
+
 use std::{net::SocketAddrV4, time::Duration};
 
 use crate::{
@@ -9,11 +12,13 @@ use chrono::NaiveDateTime;
 use iso_country::Country;
 use serde::{de::Deserializer, Deserialize};
 
+/// Internal
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 struct Response {
     pub data: Vec<RawProxy>,
 }
 
+/// Internal
 #[derive(Deserialize, Clone, Debug, PartialEq)]
 struct RawProxy {
     #[serde(rename = "ipPort")]
@@ -32,6 +37,7 @@ struct RawProxy {
 }
 
 // Sometimes country codes other than iso 3166-1 are returned so switch those to unspecified
+/// Internal
 fn ignore_bad_countries<'de, D>(deserializer: D) -> Result<Country, D::Error>
 where
     D: Deserializer<'de>,
@@ -39,6 +45,7 @@ where
     Deserialize::deserialize(deserializer).or(Ok(Country::Unspecified))
 }
 
+/// Internal
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq)]
 struct RawSupports {
     https: Option<u8>,
@@ -52,6 +59,10 @@ struct RawSupports {
     connects_to_google: Option<u8>,
 }
 
+/// All the information representing a proxy.
+///
+/// Typically most people will likely only use the `socket` value, but this contains all the
+/// information on a proxy.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Proxy {
     pub socket: SocketAddrV4,
@@ -93,7 +104,8 @@ impl From<RawProxy> for Proxy {
     }
 }
 
-pub fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
+/// Internal
+pub(crate) fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
     let resp: Response = serde_json::from_str(json)?;
     Ok(resp
         .data
@@ -106,6 +118,7 @@ pub fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Error> {
         .collect())
 }
 
+/// Represents all the attributes that the [`Proxy`][Proxy] supports.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Supports {
     pub https: bool,

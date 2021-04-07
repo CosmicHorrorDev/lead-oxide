@@ -1,9 +1,19 @@
+//! Represents all the errors epressed by the API and library.
+//!
+//! These are divided into an `APIError` which represents all errors returned by pubproxy.com and
+//! `ParamError` which expresses any parameters that were invalid and can't be caught at compile time.
+
 use std::fmt;
 
 use crate::{constants, types::NaiveResponse};
 
 use thiserror::Error;
 
+/// Represents an error with a parameter type.
+///
+/// Currently the only types that can error are [`LastChecked`][crate::types::LastChecked] and
+/// [`TimeToConnect`][crate::types::TimeToConnect] since they are both bounded values which will
+/// error if the provided value is out of bounds.
 #[derive(Error, Debug, PartialEq)]
 pub enum ParamError<T: PartialEq + fmt::Debug> {
     #[error("'{value:?}' is outside bounds: {bounds:?}")]
@@ -16,6 +26,10 @@ impl<T: PartialEq + fmt::Debug> ParamError<T> {
     }
 }
 
+/// Represents all possible errors returned by the API.
+///
+/// Some variants should be entirely prevented by this library like `Client`, while others are
+/// expected from heavy use like `RateLimit` or from being too strict on parameters like `NoProxy`.
 #[derive(Error, Debug)]
 pub enum ApiError {
     #[error("Client Error ({status}): {text}\n This should be prevented, please raise an issue")]

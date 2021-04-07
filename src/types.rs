@@ -1,3 +1,9 @@
+//! [`types`][self] contains auxillary types used by [`Opts`][crate::opts::Opts].
+//!
+//! This includes NewType wrappers around parameters like [`LastChecked`][LastChecked] and
+//! [`TimeToConnect`][TimeToConnect] along with `enum`s for parameters with a limited number of
+//! options like [`Countries`][Countries], [`Level`][Level], and [`Protocol`][Protocol].
+
 use crate::errors::ParamError;
 
 use std::{convert::TryFrom, fmt, time::Duration};
@@ -70,9 +76,9 @@ const TIME_TO_CONNECT_BOUNDS: (Duration, Duration) =
 bounded_val! {LastChecked, Duration, LAST_CHECKED_BOUNDS}
 bounded_val! {TimeToConnect, Duration, TIME_TO_CONNECT_BOUNDS}
 
-pub struct NaiveResponse {
-    pub status: u16,
-    pub text: String,
+pub(crate) struct NaiveResponse {
+    pub(crate) status: u16,
+    pub(crate) text: String,
 }
 
 impl NaiveResponse {
@@ -130,6 +136,7 @@ impl Countries {
         // TODO: make sure this is documented. Mention that unknowns are automatically filtered out
         // if any country is used in the allow or blocklist
         if let Country::Unspecified = country {
+            // TODO: this could be returned as a `ParamError` instead of panicking
             panic!("This library doesn't allow `Unspecified` country in the allow or blocklist");
         }
 

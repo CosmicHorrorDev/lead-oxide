@@ -1,3 +1,8 @@
+//! [`Fetcher`][Fetcher] is the entrypoint to requesting proxies from the API.
+//!
+//! A `Fetcher` will return any proxies that match the provided [`Opts`][crate::opts], which by
+//! default will return any proxies on the listing.
+
 use std::{
     sync::{Arc, Mutex},
     thread,
@@ -17,6 +22,11 @@ lazy_static! {
         Arc::new(Mutex::new(Instant::now() - constants::DELAY));
 }
 
+/// The entrypoint into the API.
+///
+/// A `Fetcher` represents a set of filters for the specific types of
+/// proxies that it returns along with an internal list to ensure that the most proxies possible are
+/// being returned by the API to alleviate the rate-limiting and daily-limit.
 #[derive(Clone, Debug)]
 pub struct Fetcher {
     opts: Opts,
@@ -24,6 +34,22 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
+    /// Creates a new `Fetcher` with a given set of `Opts`. If you don't care about any attributes
+    /// of the returned proxies then `Fetcher::default` is a convenience method for
+    /// `Fetcher::new(Opts::default())`.
+    ///
+    /// ```
+    /// use lead_oxide::{opts::Opts, fetcher::Fetcher, types::{Level, Protocol}};
+    ///
+    /// let basic_fetcher = Fetcher::default();
+    /// let custom_fetcher = Fetcher::new(
+    ///     Opts::builder()
+    ///         .level(Level::Elite)
+    ///         .protocol(Protocol::Http)
+    ///         .https(true)
+    ///         .build()
+    /// );
+    /// ```
     pub fn new(opts: Opts) -> Self {
         Self {
             opts,
@@ -31,6 +57,20 @@ impl Fetcher {
         }
     }
 
+    /// Attempts to get the specified amount of proxies from the API, returning an error if there
+    /// was an issue with the API. Any proxies returned before an error was encountered will still
+    /// be stored in the interal buffer, so it's possible to use this to fully exhaust your daily
+    /// limit.
+    ///
+    /// ```no_run
+    /// use lead_oxide::fetcher::Fetcher;
+    ///
+    /// let mut fetcher = Fetcher::default();
+    /// // Exhaust the daily limit
+    /// assert!(fetcher.try_get(1_000).is_err());
+    /// // Drain the full list
+    /// let proxies = fetcher.drain();
+    /// ```
     pub fn try_get(&mut self, amount: usize) -> Result<Vec<Proxy>, ApiError> {
         if self.proxies.len() >= amount {
             // If there's enough in the current list then just go ahead and fulfill without locking
@@ -130,6 +170,7 @@ impl Fetcher {
         }
     }
 
+    /// Consumes the `Fetcher` returning any proxies still left in the internal list.
     pub fn drain(self) -> Vec<Proxy> {
         self.proxies
     }

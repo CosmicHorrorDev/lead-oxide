@@ -1,3 +1,5 @@
+//! [`Opts`][Opts] provide the ability to filter the returned proxies.
+
 use std::num::NonZeroU16;
 
 use crate::types::{Countries, LastChecked, Level, Protocol, TimeToConnect};
@@ -6,6 +8,10 @@ use serde::Serialize;
 use serde_repr::Serialize_repr;
 
 // TODO: allow for multiple things being specified on the different things that accept it?
+/// A builder for setting up [`Opts`][Opts].
+///
+/// Constructed with `Opts::builder()`. By default any field that isn't specified will just return
+/// any possible value so these options just constrain the returned results.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct OptsBuilder {
     api_key: Option<String>,
@@ -24,76 +30,95 @@ pub struct OptsBuilder {
 }
 
 impl OptsBuilder {
+    /// Passes an API key to the API. This removes both the rate limit and daily limit on the API.
     pub fn api_key(mut self, api_key: String) -> Self {
         self.api_key = Some(api_key);
         self
     }
 
+    /// The anonymity level of proxies returned by the API where the proxies are either Anonymous or
+    /// Elite (Transparent isn't provided).
     pub fn level(mut self, level: Level) -> Self {
         self.level = Some(level);
         self
     }
 
+    /// The protocol supported by the proxies. This can either be HTTP, SOCKS4, or SOCKS5.
     pub fn protocol(mut self, protocol: Protocol) -> Self {
         self.protocol = Some(protocol);
         self
     }
 
+    /// Either a block or allowlist of countries for where the proxies can be located.
     pub fn countries(mut self, countries: Countries) -> Self {
         self.countries = Some(countries);
         self
     }
 
+    /// Time when the proxies were last checked. Resolution down to minutes with a valid range of
+    /// 1 to 1,000 minutes.
     pub fn last_checked(mut self, last_checked: LastChecked) -> Self {
         self.last_checked = Some(last_checked);
         self
     }
 
+    /// Specifies the port that the proxy exposes.
     pub fn port(mut self, port: NonZeroU16) -> Self {
         self.port = Some(port);
         self
     }
 
+    /// Filters based on how long it took to connect to the proxy when testing. Will return values
+    /// at or below the specified time with a resolution down to seconds with a valid range of 1 to
+    /// 60 seconds.
     pub fn time_to_connect(mut self, time_to_connect: TimeToConnect) -> Self {
         self.time_to_connect = Some(time_to_connect);
         self
     }
 
+    /// If the proxy supports cookies or not.
     pub fn cookies(mut self, cookies: bool) -> Self {
         self.cookies = Some(cookies);
         self
     }
 
+    /// If the proxy was able to connect to google or not.
     pub fn connects_to_google(mut self, connects_to_google: bool) -> Self {
         self.connects_to_google = Some(connects_to_google);
         self
     }
 
+    /// If the proxy supports HTTPS requests or not.
     pub fn https(mut self, https: bool) -> Self {
         self.https = Some(https);
         self
     }
 
+    /// If the proxy supports POST requests or not.
     pub fn post(mut self, post: bool) -> Self {
         self.post = Some(post);
         self
     }
 
+    /// If the proxy supports referer requests or not.
     pub fn referer(mut self, referer: bool) -> Self {
         self.referer = Some(referer);
         self
     }
 
+    /// If the proxy supports forwarding your user agent.
     pub fn forwards_user_agent(mut self, forwards_user_agent: bool) -> Self {
         self.forwards_user_agent = Some(forwards_user_agent);
         self
     }
 
+    /// Constructs the `OptsBuilder` into the corresponding [`Opts`][Opts] value.
     pub fn build(self) -> Opts {
         Opts::from(self)
     }
 }
 
+/// Internal
 #[derive(Serialize_repr, Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub(crate) enum Limit {
@@ -107,6 +132,7 @@ impl Default for Limit {
     }
 }
 
+/// Internal
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 enum Format {
@@ -120,6 +146,42 @@ impl Default for Format {
     }
 }
 
+/// A set of options to constrain the returned proxies.
+///
+/// `Opts` represents all the filtering options that are passed on to the API by the corresponding
+/// [`Fetcher`][crate::fetcher::Fetcher]. By default no values are filtered and any kind of proxy
+/// can be returned so this list of options only serves to restrict the proxies returned. The
+/// typical way to construct `Opts` is with [`OptsBuilder`][OptsBuilder] with the entrypoint of
+/// `Opts::builder()`.
+///
+/// ```
+/// use iso_country::Country;
+/// use lead_oxide::{
+///     opts::Opts,
+///     types::{Countries, LastChecked, Level, Protocol, TimeToConnect}
+/// };
+/// use std::{convert::TryFrom, num::NonZeroU16, time::Duration};
+///
+/// let basic_opts = Opts::builder()
+///     .post(true)
+///     .cookies(true)
+///     .build();
+/// let kitchen_sink = Opts::builder()
+///     .api_key("<key>".to_string())
+///     .level(Level::Elite)
+///     .protocol(Protocol::Socks4)
+///     .countries(Countries::block().countries(&[Country::CH, Country::ES]))
+///     .last_checked(LastChecked::try_from(Duration::from_secs(60 * 10)).unwrap())
+///     .time_to_connect(TimeToConnect::try_from(Duration::from_secs(10)).unwrap())
+///     .port(NonZeroU16::new(8080).unwrap())
+///     .cookies(true)
+///     .connects_to_google(false)
+///     .https(true)
+///     .post(false)
+///     .referer(true)
+///     .forwards_user_agent(false)
+///     .build();
+/// ```
 #[derive(Serialize, Clone, Debug, Default, PartialEq)]
 pub struct Opts {
     #[serde(rename = "api")]
@@ -149,10 +211,12 @@ pub struct Opts {
 }
 
 impl Opts {
+    /// Constructs an [`OptsBuilder`][OptsBuilder]
     pub fn builder() -> OptsBuilder {
         OptsBuilder::default()
     }
 
+    /// Internal
     pub(crate) fn is_premium(&self) -> bool {
         self.api_key.is_some()
     }
