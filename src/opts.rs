@@ -182,7 +182,7 @@ impl Default for Format {
 ///     .forwards_user_agent(false)
 ///     .build();
 /// ```
-#[derive(Serialize, Clone, Debug, Default, PartialEq)]
+#[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Opts {
     #[serde(rename = "api")]
     api_key: Option<String>,

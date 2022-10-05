@@ -100,7 +100,7 @@ impl From<Response> for NaiveResponse {
     }
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum Countries {
     #[serde(rename = "country")]
     AllowList(String),

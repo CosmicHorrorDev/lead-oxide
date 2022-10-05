@@ -63,7 +63,7 @@ struct RawSupports {
 ///
 /// Typically most people will likely only use the `socket` value, but this contains all the
 /// information on a proxy.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proxy {
     pub socket: SocketAddrV4,
     pub country: Country,
@@ -119,7 +119,7 @@ pub(crate) fn proxies_from_json(json: &str) -> Result<Vec<Proxy>, serde_json::Er
 }
 
 /// Represents all the attributes that the [`Proxy`][Proxy] supports.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Supports {
     pub https: bool,
     pub get: bool,

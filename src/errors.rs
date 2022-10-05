@@ -14,7 +14,7 @@ use thiserror::Error;
 /// Currently the only types that can error are [`LastChecked`][crate::types::LastChecked] and
 /// [`TimeToConnect`][crate::types::TimeToConnect] since they are both bounded values which will
 /// error if the provided value is out of bounds.
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum ParamError<T: PartialEq + fmt::Debug> {
     #[error("'{value:?}' is outside bounds: {bounds:?}")]
     OutOfBounds { bounds: (T, T), value: T },
