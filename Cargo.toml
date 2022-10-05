@@ -4,7 +4,7 @@ version = "0.2.0"
 authors = ["Lovecraftian Horror <LovecraftianHorror@pm.me>"]
 edition = "2018"
 description = "WIP API wrapper for pubproxy.com"
-license = "Unlicense"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/LovecraftianHorror/lead-oxide"
 
 
