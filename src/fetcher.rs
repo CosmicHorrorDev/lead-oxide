@@ -156,10 +156,14 @@ impl Fetcher {
             // TODO: is there a better way to mock the api response? It would be nice to test that
             // errors get interpreted right too. And if we could panic then we can test that the
             // mutex getting poisoned works right
+            // TODO: Yes, just use something like wiremock and allow for setting the API url
             Ok(iter::repeat(Proxy {
                 socket: SocketAddrV4::new(Ipv4Addr::new(1, 2, 3, 4), 4321),
                 country: Country::CA,
-                last_checked: NaiveDate::from_ymd(2020, 1, 1).and_hms(1, 1, 1),
+                last_checked: NaiveDate::from_ymd_opt(2020, 1, 1)
+                    .unwrap()
+                    .and_hms_opt(1, 1, 1)
+                    .unwrap(),
                 level: Level::Anonymous,
                 protocol: Protocol::Http,
                 time_to_connect: Duration::from_secs(21),

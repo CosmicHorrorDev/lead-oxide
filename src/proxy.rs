@@ -166,12 +166,12 @@ mod test {
         // And now onto testing
         let proxies = proxies_from_json(&raw_response)?;
 
-        let date = NaiveDate::from_ymd(2020, 12, 13);
+        let date = NaiveDate::from_ymd_opt(2020, 12, 13).unwrap();
 
         let common = Proxy {
             socket: "1.2.3.4:1234".parse().unwrap(),
             country: Country::US,
-            last_checked: date.and_hms(0, 0, 0),
+            last_checked: date.and_hms_opt(0, 0, 0).unwrap(),
             level: Level::Elite,
             protocol: Protocol::Http,
             time_to_connect: Duration::from_secs(0),
@@ -189,13 +189,13 @@ mod test {
         let ideal = vec![
             Proxy {
                 socket: "67.225.164.154:80".parse().unwrap(),
-                last_checked: date.and_hms(20, 6, 41),
+                last_checked: date.and_hms_opt(20, 6, 41).unwrap(),
                 time_to_connect: Duration::from_secs(10),
                 ..common
             },
             Proxy {
                 socket: "35.181.4.4:80".parse().unwrap(),
-                last_checked: date.and_hms(20, 10, 11),
+                last_checked: date.and_hms_opt(20, 10, 11).unwrap(),
                 time_to_connect: Duration::from_secs(1),
                 supports: Supports {
                     forwards_user_agent: true,
@@ -206,7 +206,7 @@ mod test {
             Proxy {
                 socket: "89.24.76.185:32842".parse().unwrap(),
                 country: Country::CZ,
-                last_checked: date.and_hms(20, 1, 52),
+                last_checked: date.and_hms_opt(20, 1, 52).unwrap(),
                 protocol: Protocol::Socks5,
                 time_to_connect: Duration::from_secs(18),
                 ..common
@@ -214,7 +214,7 @@ mod test {
             Proxy {
                 socket: "125.99.120.166:40390".parse().unwrap(),
                 country: Country::IN,
-                last_checked: date.and_hms(20, 10, 11),
+                last_checked: date.and_hms_opt(20, 10, 11).unwrap(),
                 protocol: Protocol::Socks4,
                 time_to_connect: Duration::from_secs(14),
                 ..common
