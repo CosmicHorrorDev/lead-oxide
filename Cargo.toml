@@ -1,11 +1,11 @@
 [package]
 name = "lead-oxide"
-version = "0.2.0"
-authors = ["Lovecraftian Horror <LovecraftianHorror@pm.me>"]
+version = "0.2.1"
+authors = ["Cosmic <CosmicHorrorDev@pm.me>"]
 edition = "2018"
 description = "WIP API wrapper for pubproxy.com"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/LovecraftianHorror/lead-oxide"
+repository = "https://github.com/CosmicHorrorDev/lead-oxide"
 
 
 [dependencies]
