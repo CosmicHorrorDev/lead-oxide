@@ -1,3 +1,13 @@
+> [!IMPORTANT]
+> This crate is provided **as-is**.
+>
+> I'm not interested in maintaining this library going forward. It was a good
+> introduction to publishing and maintaining a crate, but having fulfilled that
+> purpose it's not something I would recommend people use over other options.
+> The API itself if fine, but the upstream service has also been lacking
+> maintenance, and has a habit of entirely blocking you for hours if you edge
+> over the strict 1 req/second limit.
+
 # PbO
 
 `lead-oxide` is a wrapper around pubproxy.com's public proxy API.
